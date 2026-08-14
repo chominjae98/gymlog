@@ -81,14 +81,14 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
       />
-      <div className="animate-sheet-up safe-bottom relative z-10 max-h-[88dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] bg-background px-5 pt-4 pb-8 shadow-[var(--shadow-pop)]">
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-border" />
+      <div className="animate-sheet-up safe-bottom relative z-10 max-h-[88dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] bg-background px-6 pt-5 pb-10 shadow-[var(--shadow-pop)]">
+        <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-border" />
 
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-[17px] font-bold text-foreground">오늘 운동 인증</h3>
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-[18px] font-bold text-foreground">오늘 운동 인증</h3>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-muted"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-muted hover:bg-border/60"
           >
             <X size={18} />
           </button>
@@ -125,7 +125,7 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
           placeholder="오늘 운동 한 줄 메모 (선택)"
           rows={2}
           maxLength={200}
-          className="mt-4 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-[14px] text-foreground outline-none focus:border-brand"
+          className="mt-5 w-full resize-none rounded-2xl bg-surface-muted px-4 py-3.5 text-[14px] text-foreground outline-none"
         />
 
         {error && (
@@ -135,7 +135,7 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
         <button
           onClick={handleSubmit}
           disabled={uploading}
-          className="mt-5 w-full rounded-2xl bg-brand py-3.5 text-[15px] font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+          className="mt-6 w-full rounded-2xl bg-brand py-3.5 text-[15px] font-semibold text-white active:scale-[0.98] disabled:opacity-60"
         >
           {uploading ? "업로드 중..." : "인증 완료"}
         </button>

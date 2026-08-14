@@ -70,16 +70,9 @@ export function FineSection({
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-[14px] font-semibold text-foreground">
-                    {p.profile.nickname}
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.badgeClass}`}
-                  >
-                    {meta.label}
-                  </span>
-                </div>
+                <span className="truncate text-[14px] font-semibold text-foreground">
+                  {p.profile.nickname}
+                </span>
                 {p.targetDays != null ? (
                   <div className="mt-1.5">
                     <DayDots
@@ -93,10 +86,18 @@ export function FineSection({
                     아직 목표를 정하지 않았어요
                   </p>
                 )}
+              </div>
+
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.badgeClass}`}
+                >
+                  {meta.label}
+                </span>
                 {fine > 0 && (
-                  <p className="mt-1 text-[12px] font-medium text-warn">
+                  <span className="text-[11px] font-medium text-warn">
                     예상 벌금 {fine.toLocaleString()}원
-                  </p>
+                  </span>
                 )}
               </div>
             </li>

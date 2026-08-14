@@ -76,30 +76,30 @@ export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props
           일주일에 며칠 운동할지 정해주세요
         </p>
 
-        <div className="mt-4 flex items-center justify-center gap-6">
+        <div className="mt-5 flex items-center justify-center gap-8">
           <button
             onClick={() => setSelected((v) => Math.max(MIN_DAYS, v - 1))}
             disabled={selected <= MIN_DAYS}
             aria-label="하루 줄이기"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-foreground transition active:scale-90 disabled:opacity-30"
+            className="flex h-12 w-12 items-center justify-center rounded-full text-foreground transition active:scale-90 disabled:opacity-30"
           >
-            <Minus size={20} />
+            <Minus size={22} />
           </button>
 
-          <div className="flex w-28 items-baseline justify-center gap-0.5 rounded-3xl bg-surface py-5 shadow-[var(--shadow-soft)]">
-            <span className="text-[40px] font-bold leading-none text-foreground">
+          <div className="flex w-16 items-baseline justify-center gap-0.5">
+            <span className="text-[44px] font-bold leading-none text-foreground">
               {selected}
             </span>
-            <span className="text-[16px] font-semibold text-foreground">일</span>
+            <span className="text-[17px] font-semibold text-foreground">일</span>
           </div>
 
           <button
             onClick={() => setSelected((v) => Math.min(MAX_DAYS, v + 1))}
             disabled={selected >= MAX_DAYS}
             aria-label="하루 늘리기"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-foreground transition active:scale-90 disabled:opacity-30"
+            className="flex h-12 w-12 items-center justify-center rounded-full text-foreground transition active:scale-90 disabled:opacity-30"
           >
-            <Plus size={20} />
+            <Plus size={22} />
           </button>
         </div>
 

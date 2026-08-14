@@ -95,18 +95,18 @@ export function DayDrawer({
         </div>
 
         {logs.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 pb-10 pt-4 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-soft text-4xl">
+          <div className="flex min-h-[52dvh] flex-col items-center justify-center gap-5 px-8 pb-12 text-center">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand-soft text-[44px]">
               🏃
             </div>
-            <div>
-              <p className="text-[14px] font-semibold text-foreground">
+            <div className="flex flex-col gap-2">
+              <p className="text-[15px] font-semibold text-foreground">
                 {isToday
                   ? "오늘 첫 인증의 주인공이 되어보세요"
                   : "이 날은 아무도 인증하지 않았어요"}
               </p>
               {!isToday && (
-                <p className="mt-1 text-[12px] text-muted">
+                <p className="text-[13px] text-muted">
                   다른 날짜를 눌러 인증 기록을 확인해보세요
                 </p>
               )}
@@ -114,7 +114,7 @@ export function DayDrawer({
             {isToday && (
               <button
                 onClick={onUploadClick}
-                className="mt-1 rounded-full bg-brand px-5 py-2.5 text-[13px] font-semibold text-white shadow-[var(--shadow-soft)] transition active:scale-95"
+                className="mt-2 rounded-full bg-brand px-6 py-3 text-[13px] font-semibold text-white shadow-[var(--shadow-soft)] transition active:scale-95"
               >
                 운동 인증하기
               </button>
