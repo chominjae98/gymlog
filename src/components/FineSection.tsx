@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Users } from "lucide-react";
+import { DayDots } from "@/components/DayDots";
 import type { WeeklyProgress } from "@/types/database";
 
 const STATUS_META: Record<
@@ -14,9 +15,9 @@ const STATUS_META: Record<
   fined: { label: "벌금 확정", badgeClass: "bg-warn-soft text-warn" },
 };
 
-function fineAmount(p: WeeklyProgress, finePerDay: number) {
-  if (p.status !== "fined" || p.targetDays == null) return 0;
-  return (p.targetDays - p.achievedDays) * finePerDay;
+// 벌금은 며칠 모자랐는지와 상관없이, 이번 주 목표를 못 채우면 고정 금액 한 번만 부과된다.
+function fineAmount(p: WeeklyProgress, weeklyFine: number) {
+  return p.status === "fined" ? weeklyFine : 0;
 }
 
 export function FineSection({
@@ -27,7 +28,7 @@ export function FineSection({
   finePerDay: number;
 }) {
   const fined = progress.filter((p) => p.status === "fined");
-  const totalFine = fined.reduce((sum, p) => sum + fineAmount(p, finePerDay), 0);
+  const totalFine = fined.length * finePerDay;
   const sorted = [...progress].sort((a, b) => {
     const order = { fined: 0, "at-risk": 1, safe: 2, "no-goal": 3 };
     return order[a.status] - order[b.status];
@@ -59,10 +60,6 @@ export function FineSection({
         {sorted.map((p) => {
           const meta = STATUS_META[p.status];
           const fine = fineAmount(p, finePerDay);
-          const pct =
-            p.targetDays != null
-              ? Math.min(100, Math.round((p.achievedDays / p.targetDays) * 100))
-              : 0;
 
           return (
             <li
@@ -93,18 +90,12 @@ export function FineSection({
                   </span>
                 </div>
                 {p.targetDays != null ? (
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                      <div
-                        className={`h-full rounded-full ${
-                          p.status === "fined" ? "bg-warn" : "bg-brand"
-                        }`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="shrink-0 text-[11px] text-muted">
-                      {p.achievedDays}/{p.targetDays}일
-                    </span>
+                  <div className="mt-1.5">
+                    <DayDots
+                      target={p.targetDays}
+                      achieved={p.achievedDays}
+                      tone={p.status === "fined" ? "warn" : "brand"}
+                    />
                   </div>
                 ) : (
                   <p className="mt-0.5 text-[12px] text-muted">

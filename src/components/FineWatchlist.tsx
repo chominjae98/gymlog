@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { AlertTriangle, PartyPopper } from "lucide-react";
+import { DayDots } from "@/components/DayDots";
 import type { WeeklyProgress } from "@/types/database";
 
 /**
@@ -45,13 +46,9 @@ export function FineWatchlist({
 
       <ul className="flex flex-col px-3 pb-1">
         {atRisk.map((p) => {
-          const shortBy = p.targetDays != null ? p.targetDays - p.achievedDays : 0;
           const isFined = p.status === "fined";
-          const fineAmount = isFined ? shortBy * finePerDay : 0;
-          const pct =
-            p.targetDays != null
-              ? Math.min(100, Math.round((p.achievedDays / p.targetDays) * 100))
-              : 0;
+          // 벌금은 며칠 모자랐는지와 상관없이 이번 주 목표를 못 채우면 고정 금액이 한 번 부과된다.
+          const fineAmount = isFined ? finePerDay : 0;
 
           return (
             <li key={p.profile.id} className="flex items-center gap-2.5 py-2">
@@ -80,17 +77,15 @@ export function FineWatchlist({
                     {isFined ? `${fineAmount.toLocaleString()}원` : "막판 스퍼트"}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                    <div
-                      className={`h-full rounded-full ${isFined ? "bg-warn" : "bg-amber-400"}`}
-                      style={{ width: `${pct}%` }}
+                {p.targetDays != null && (
+                  <div className="mt-1.5">
+                    <DayDots
+                      target={p.targetDays}
+                      achieved={p.achievedDays}
+                      tone={isFined ? "warn" : "brand"}
                     />
                   </div>
-                  <span className="shrink-0 text-[10.5px] text-muted">
-                    {p.achievedDays}/{p.targetDays}일
-                  </span>
-                </div>
+                )}
               </div>
             </li>
           );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getWeekStartKey } from "@/lib/date";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -14,12 +14,13 @@ type Props = {
   onSaved: (targetDays: number) => void;
 };
 
-const OPTIONS = [1, 2, 3, 4, 5, 6, 7];
+const MIN_DAYS = 1;
+const MAX_DAYS = 7;
 
 export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props) {
   useLockBodyScroll();
   const showToast = useToast();
-  const [selected, setSelected] = useState(currentGoal ?? 3);
+  const [selected, setSelected] = useState(currentGoal ?? 4);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,29 +72,35 @@ export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-4 gap-2">
-          {OPTIONS.map((day) => (
-            <button
-              key={day}
-              onClick={() => setSelected(day)}
-              className={[
-                "flex flex-col items-center justify-center rounded-2xl py-3.5 transition active:scale-95",
-                selected === day
-                  ? "bg-brand-soft ring-2 ring-brand shadow-[var(--shadow-soft)]"
-                  : "bg-surface-muted",
-              ].join(" ")}
-            >
-              <span
-                className={[
-                  "text-[18px] font-bold",
-                  selected === day ? "text-brand-strong" : "text-foreground",
-                ].join(" ")}
-              >
-                {day}
-              </span>
-              <span className="text-[11px] text-muted">일</span>
-            </button>
-          ))}
+        <p className="mt-4 text-center text-[13px] text-muted">
+          일주일에 며칠 운동할지 정해주세요
+        </p>
+
+        <div className="mt-4 flex items-center justify-center gap-6">
+          <button
+            onClick={() => setSelected((v) => Math.max(MIN_DAYS, v - 1))}
+            disabled={selected <= MIN_DAYS}
+            aria-label="하루 줄이기"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-foreground transition active:scale-90 disabled:opacity-30"
+          >
+            <Minus size={20} />
+          </button>
+
+          <div className="flex w-24 flex-col items-center justify-center rounded-3xl bg-brand-soft py-4">
+            <span className="text-[36px] font-bold leading-none text-brand-strong">
+              {selected}
+            </span>
+            <span className="mt-1 text-[12px] font-medium text-brand-strong">일</span>
+          </div>
+
+          <button
+            onClick={() => setSelected((v) => Math.min(MAX_DAYS, v + 1))}
+            disabled={selected >= MAX_DAYS}
+            aria-label="하루 늘리기"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted text-foreground transition active:scale-90 disabled:opacity-30"
+          >
+            <Plus size={20} />
+          </button>
         </div>
 
         {error && (
