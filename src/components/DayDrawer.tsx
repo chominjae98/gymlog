@@ -183,46 +183,107 @@ export function DayDrawer({
   );
 }
 
-/** 사진이 여러 장이면 옆으로 스와이프하며 볼 수 있는 캐러셀, 한 장이면 그냥 보여준다. */
+/**
+ * 사진이 여러 장이면 옆으로 스와이프하며 볼 수 있는 캐러셀, 한 장이면 그냥 보여준다.
+ *
+ * 브라우저의 네이티브 가로 스크롤(overflow-x-auto + scroll-snap)에 맡기지 않고,
+ * 터치 이벤트를 직접 읽어서 "이 제스처가 가로인지 세로인지"를 코드로 직접 판별한다.
+ * (touch-action CSS로 브라우저에게 위임하는 방식은 iOS 등 일부 환경에서 세로 스크롤을
+ *  여전히 가로채가는 문제가 있어서, 아예 판단 자체를 우리 코드가 하도록 바꿨다.)
+ * 가로로 확정된 제스처만 우리가 preventDefault로 가져가고, 세로로 확정되면 아무것도
+ * 안 하고 그대로 둬서 바깥의 세로 스크롤 영역이 정상적으로 스크롤되게 한다.
+ */
 function PhotoCarousel({ photoUrls, nickname }: { photoUrls: string[]; nickname: string }) {
+  const multi = photoUrls.length > 1;
   const [index, setIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const indexRef = useRef(0);
 
-  // 스크롤 이벤트는 드래그 중 매우 자주 발생하므로, 프레임당 한 번만
-  // 상태를 갱신해 불필요한 리렌더(iOS에서 화면 깨짐/지지직의 한 원인)를 줄인다.
-  function handleScroll() {
-    if (rafRef.current != null) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      const el = scrollRef.current;
-      if (!el) return;
-      const i = Math.round(el.scrollLeft / el.clientWidth);
-      setIndex((prev) => (prev === i ? prev : i));
-    });
-  }
+  // 인덱스가 바뀌면(스와이프 완료 등) 트랙 위치를 그 사진으로 맞추고, ref도 최신화한다.
+  useEffect(() => {
+    indexRef.current = index;
+    const container = containerRef.current;
+    const track = trackRef.current;
+    if (!container || !track) return;
+    track.style.transition = "none";
+    track.style.transform = `translateX(${-index * container.clientWidth}px)`;
+  }, [index]);
 
   useEffect(() => {
+    const container = containerRef.current;
+    const track = trackRef.current;
+    if (!container || !track || !multi) return;
+
+    let direction: "x" | "y" | null = null;
+    let startX = 0;
+    let startY = 0;
+    let width = 0;
+    let dx = 0;
+
+    function handleTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      direction = null;
+      dx = 0;
+      width = container!.clientWidth;
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const moveX = t.clientX - startX;
+      const moveY = t.clientY - startY;
+
+      if (direction === null) {
+        // 아주 미세한 흔들림(8px 미만)은 아직 방향을 정하지 않고 지켜본다.
+        if (Math.abs(moveX) < 8 && Math.abs(moveY) < 8) return;
+        direction = Math.abs(moveX) > Math.abs(moveY) ? "x" : "y";
+      }
+      if (direction !== "x") return; // 세로로 판정 → 브라우저 기본 스크롤에 그대로 맡김
+
+      e.preventDefault(); // 가로로 판정된 동안에만 페이지가 같이 스크롤되지 않도록 막는다
+      dx = moveX;
+      track!.style.transition = "none";
+      track!.style.transform = `translateX(${-indexRef.current * width + dx}px)`;
+    }
+
+    function handleTouchEnd() {
+      if (direction !== "x") {
+        direction = null;
+        return;
+      }
+      const threshold = width * 0.2;
+      let next = indexRef.current;
+      if (dx <= -threshold && indexRef.current < photoUrls.length - 1) next = indexRef.current + 1;
+      else if (dx >= threshold && indexRef.current > 0) next = indexRef.current - 1;
+
+      track!.style.transition = "transform 0.25s ease-out";
+      track!.style.transform = `translateX(${-next * width}px)`;
+      if (next !== indexRef.current) setIndex(next);
+      direction = null;
+      dx = 0;
+    }
+
+    container.addEventListener("touchstart", handleTouchStart, { passive: true });
+    container.addEventListener("touchmove", handleTouchMove, { passive: false });
+    container.addEventListener("touchend", handleTouchEnd, { passive: true });
+    container.addEventListener("touchcancel", handleTouchEnd, { passive: true });
     return () => {
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("touchend", handleTouchEnd);
+      container.removeEventListener("touchcancel", handleTouchEnd);
     };
-  }, []);
+  }, [multi, photoUrls.length]);
 
   return (
-    <div className="relative aspect-[4/5] w-full overflow-hidden bg-surface-muted">
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        // touch-pan-x: 이 영역에서 가로 스와이프는 캐러셀이 직접 처리하되,
-        // 세로 스와이프는 가로채지 않고 그대로 상위(세로 스크롤 영역)로 넘긴다.
-        // (안 넣으면 사진이 2장 이상일 때 세로 스크롤이 막히는 버그가 있었음)
-        className="flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto overscroll-contain [&::-webkit-scrollbar]:hidden"
-      >
+    <div ref={containerRef} className="relative aspect-[4/5] w-full overflow-hidden bg-surface-muted">
+      <div ref={trackRef} className="flex h-full will-change-transform">
         {photoUrls.map((url, i) => (
-          <div
-            key={url}
-            className="relative h-full w-full shrink-0 snap-center [backface-visibility:hidden] [transform:translateZ(0)]"
-          >
+          <div key={url} className="relative h-full w-full shrink-0 [backface-visibility:hidden]">
             <Image
               src={url}
               alt={`${nickname}의 운동 인증 ${i + 1}`}
