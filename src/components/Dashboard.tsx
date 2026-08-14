@@ -26,7 +26,7 @@ type Props = {
   initialMonthLogs: WorkoutLogWithProfile[];
   initialWeeklyProgress: WeeklyProgress[];
   initialMyGoal: number | null;
-  finePerDay: number;
+  weeklyFine: number;
 };
 
 export function Dashboard({
@@ -35,7 +35,7 @@ export function Dashboard({
   initialMonthLogs,
   initialWeeklyProgress,
   initialMyGoal,
-  finePerDay,
+  weeklyFine,
 }: Props) {
   const router = useRouter();
   const today = new Date();
@@ -111,7 +111,7 @@ export function Dashboard({
           </span>
         </button>
 
-        <FineWatchlist progress={weeklyProgress} finePerDay={finePerDay} />
+        <FineWatchlist progress={weeklyProgress} weeklyFine={weeklyFine} />
 
         <CalendarGrid
           monthDate={monthDate}
@@ -121,7 +121,7 @@ export function Dashboard({
           onSelectDate={setSelectedKey}
         />
 
-        <FineSection progress={weeklyProgress} finePerDay={finePerDay} />
+        <FineSection progress={weeklyProgress} weeklyFine={weeklyFine} />
       </main>
 
       <button

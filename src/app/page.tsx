@@ -9,12 +9,7 @@ import {
   getProfile,
   getWeeklyProgress,
 } from "@/lib/dashboard-data";
-
-const SUPABASE_CONFIGURED =
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("xxxx") &&
-  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes("xxxx");
+import { SUPABASE_CONFIGURED } from "@/lib/supabase-configured";
 
 export default async function Home({
   searchParams,
@@ -59,7 +54,7 @@ export default async function Home({
       initialMonthLogs={monthLogs}
       initialWeeklyProgress={weeklyProgress}
       initialMyGoal={myGoal}
-      finePerDay={finePerDay}
+      weeklyFine={finePerDay}
     />
   );
 }

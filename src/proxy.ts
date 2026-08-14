@@ -1,11 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { SUPABASE_CONFIGURED } from "@/lib/supabase-configured";
 
-const SUPABASE_CONFIGURED =
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("xxxx");
-
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (!SUPABASE_CONFIGURED) return NextResponse.next();
   return await updateSession(request);
 }

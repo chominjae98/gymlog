@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Camera, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toDateKey } from "@/lib/date";
+import { uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 
@@ -52,25 +53,13 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
     const supabase = createClient();
     const todayKey = toDateKey(new Date());
 
-    const photoUrls: string[] = [];
-    for (const file of files) {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${userId}/${todayKey}-${Date.now()}-${photoUrls.length}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("workout-photos")
-        .upload(path, file, { cacheControl: "3600", upsert: false });
-
-      if (uploadError) {
-        setUploading(false);
-        setError("업로드에 실패했어요. 다시 시도해 주세요.");
-        return;
-      }
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("workout-photos").getPublicUrl(path);
-      photoUrls.push(publicUrl);
+    let photoUrls: string[];
+    try {
+      photoUrls = await uploadWorkoutPhotos(supabase, userId, todayKey, files);
+    } catch {
+      setUploading(false);
+      setError("업로드에 실패했어요. 다시 시도해 주세요.");
+      return;
     }
 
     const { error: insertError } = await supabase.from("workout_logs").insert({

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Users } from "lucide-react";
 import { DayDots } from "@/components/DayDots";
+import { computeFineAmount } from "@/lib/dashboard-data";
 import type { WeeklyProgress } from "@/types/database";
 
 const STATUS_META: Record<
@@ -15,17 +16,12 @@ const STATUS_META: Record<
   fined: { label: "벌금 확정", badgeClass: "bg-warn-soft text-warn" },
 };
 
-// 벌금은 며칠 모자랐는지와 상관없이, 이번 주 목표를 못 채우면 고정 금액 한 번만 부과된다.
-function fineAmount(p: WeeklyProgress, weeklyFine: number) {
-  return p.status === "fined" ? weeklyFine : 0;
-}
-
 export function FineSection({
   progress,
-  finePerDay,
+  weeklyFine,
 }: {
   progress: WeeklyProgress[];
-  finePerDay: number;
+  weeklyFine: number;
 }) {
   const sorted = [...progress].sort((a, b) => {
     const order = { fined: 0, "at-risk": 1, safe: 2, "no-goal": 3 };
@@ -50,7 +46,7 @@ export function FineSection({
       <ul className="flex flex-col gap-2">
         {sorted.map((p) => {
           const meta = STATUS_META[p.status];
-          const fine = fineAmount(p, finePerDay);
+          const fine = computeFineAmount(p.status, weeklyFine);
 
           return (
             <li

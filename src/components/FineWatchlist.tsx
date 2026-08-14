@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { AlertTriangle, PartyPopper } from "lucide-react";
 import { DayDots } from "@/components/DayDots";
+import { computeFineAmount } from "@/lib/dashboard-data";
 import type { WeeklyProgress } from "@/types/database";
 
 /**
@@ -13,10 +14,10 @@ import type { WeeklyProgress } from "@/types/database";
  */
 export function FineWatchlist({
   progress,
-  finePerDay,
+  weeklyFine,
 }: {
   progress: WeeklyProgress[];
-  finePerDay: number;
+  weeklyFine: number;
 }) {
   const atRisk = progress.filter(
     (p) => p.status === "fined" || p.status === "at-risk"
@@ -47,8 +48,7 @@ export function FineWatchlist({
       <ul className="flex flex-col px-3 pb-1">
         {atRisk.map((p) => {
           const isFined = p.status === "fined";
-          // 벌금은 며칠 모자랐는지와 상관없이 이번 주 목표를 못 채우면 고정 금액이 한 번 부과된다.
-          const fineAmount = isFined ? finePerDay : 0;
+          const fineAmount = computeFineAmount(p.status, weeklyFine);
 
           return (
             <li key={p.profile.id} className="flex items-center gap-2.5 py-2">

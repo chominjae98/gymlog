@@ -6,6 +6,7 @@ import { EllipsisVertical, Pencil, Trash2, X } from "lucide-react";
 import { formatDayTitle, formatTime } from "@/lib/date";
 import { countUniquePeople } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/client";
+import { removeWorkoutPhotos } from "@/lib/storage-upload";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import { EditPostSheet } from "@/components/EditPostSheet";
@@ -51,16 +52,7 @@ export function DayDrawer({
     }
 
     // 사진 파일도 함께 정리 (best-effort, 실패해도 기록 삭제는 이미 반영됨)
-    const marker = "/workout-photos/";
-    const paths = log.photo_urls
-      .map((url) => {
-        const idx = url.indexOf(marker);
-        return idx === -1 ? null : url.slice(idx + marker.length);
-      })
-      .filter((p): p is string => !!p);
-    if (paths.length > 0) {
-      await supabase.storage.from("workout-photos").remove(paths);
-    }
+    await removeWorkoutPhotos(supabase, log.photo_urls);
 
     setBusyId(null);
     showToast("게시물을 삭제했어요");

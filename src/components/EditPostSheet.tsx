@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import type { WorkoutLogWithProfile } from "@/types/database";
@@ -15,12 +16,6 @@ type Props = {
 };
 
 const MAX_PHOTOS = 5;
-const STORAGE_MARKER = "/workout-photos/";
-
-function pathFromPublicUrl(url: string) {
-  const idx = url.indexOf(STORAGE_MARKER);
-  return idx === -1 ? null : url.slice(idx + STORAGE_MARKER.length);
-}
 
 /** 이미 올린 인증 게시물의 사진(여러 장)/메모를 통째로 수정하는 바텀시트. */
 export function EditPostSheet({ log, onClose, onSaved }: Props) {
@@ -66,24 +61,13 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
     setError(null);
     const supabase = createClient();
 
-    const uploadedUrls: string[] = [];
-    for (const file of newFiles) {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${log.user_id}/${log.log_date}-${Date.now()}-${uploadedUrls.length}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("workout-photos")
-        .upload(path, file, { cacheControl: "3600", upsert: false });
-
-      if (uploadError) {
-        setSaving(false);
-        setError("사진 업로드에 실패했어요. 다시 시도해 주세요.");
-        return;
-      }
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("workout-photos").getPublicUrl(path);
-      uploadedUrls.push(publicUrl);
+    let uploadedUrls: string[];
+    try {
+      uploadedUrls = await uploadWorkoutPhotos(supabase, log.user_id, log.log_date, newFiles);
+    } catch {
+      setSaving(false);
+      setError("사진 업로드에 실패했어요. 다시 시도해 주세요.");
+      return;
     }
 
     const finalPhotoUrls = [...keptUrls, ...uploadedUrls];
@@ -101,10 +85,7 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
 
     // 화면에서 뺀(더 이상 안 쓰는) 기존 사진 파일 정리 (best-effort)
     const removedUrls = log.photo_urls.filter((u) => !keptUrls.includes(u));
-    const removedPaths = removedUrls.map(pathFromPublicUrl).filter((p): p is string => !!p);
-    if (removedPaths.length > 0) {
-      await supabase.storage.from("workout-photos").remove(removedPaths);
-    }
+    await removeWorkoutPhotos(supabase, removedUrls);
 
     showToast("게시물을 수정했어요");
     onSaved();
