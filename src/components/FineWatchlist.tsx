@@ -74,7 +74,7 @@ export function FineWatchlist({
                       isFined ? "bg-warn-soft text-warn" : "bg-amber-100 text-amber-700",
                     ].join(" ")}
                   >
-                    {isFined ? `${fineAmount.toLocaleString()}원` : "막판 스퍼트"}
+                    {isFined ? `${fineAmount.toLocaleString()}원` : "목표 미달성"}
                   </span>
                 </div>
                 {p.targetDays != null && (

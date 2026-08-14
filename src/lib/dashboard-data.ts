@@ -64,6 +64,10 @@ export function computeFineAmount(
  * 목표 대비 현재 상태를 계산하는 순수 함수. 서버(getWeeklyProgress)뿐 아니라
  * 클라이언트에서 사용자가 방금 한 행동(목표 변경 등)을 화면에 즉시 반영하는
  * 낙관적 업데이트(optimistic update)에도 그대로 재사용한다.
+ *
+ * 규칙: 남은 요일 수와 상관없이, 이번 주 목표를 다 채우기 전까지는 계속 "위기(at-risk)"다.
+ * 목표를 달성하는 순간에만 "순항 중(safe)"으로 바뀌고, 남은 요일을 다 채워도 더 이상
+ * 목표에 도달할 수 없게 된 순간에는 "벌금 확정(fined)"으로 확정된다.
  */
 export function computeWeeklyStatus(
   achievedDays: number,
@@ -71,11 +75,10 @@ export function computeWeeklyStatus(
   remainingDaysInWeek: number
 ): WeeklyProgress["status"] {
   if (targetDays == null) return "no-goal";
-  const possibleMax = achievedDays + remainingDaysInWeek;
   if (achievedDays >= targetDays) return "safe";
+  const possibleMax = achievedDays + remainingDaysInWeek;
   if (possibleMax < targetDays) return "fined";
-  if (possibleMax === targetDays) return "at-risk";
-  return "safe";
+  return "at-risk";
 }
 
 /** 오늘 기준 이번 주, 멤버별 목표 달성 현황 (벌금 위기 계산 포함) */
