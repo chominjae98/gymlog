@@ -29,7 +29,7 @@ export async function getMonthLogs(supabase: Client, monthDate: Date) {
   const { data } = await supabase
     .from("workout_logs")
     .select(
-      "id, user_id, log_date, photo_url, memo, created_at, profile:profiles(id, nickname, avatar_url)"
+      "id, user_id, log_date, photo_urls, memo, created_at, profile:profiles(id, nickname, avatar_url)"
     )
     .gte("log_date", start)
     .lte("log_date", end)

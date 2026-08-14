@@ -19,7 +19,7 @@ export type WorkoutLog = {
   id: string;
   user_id: string;
   log_date: string; // YYYY-MM-DD
-  photo_url: string;
+  photo_urls: string[]; // 사진 여러 장 첨부 가능, 최소 1장
   memo: string | null;
   created_at: string;
 };
@@ -52,7 +52,7 @@ export type Database = {
         Row: WorkoutLog;
         Insert: Partial<WorkoutLog> & {
           user_id: string;
-          photo_url: string;
+          photo_urls: string[];
         };
         Update: Partial<WorkoutLog>;
         Relationships: [];

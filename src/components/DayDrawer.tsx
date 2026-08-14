@@ -52,10 +52,14 @@ export function DayDrawer({
 
     // 사진 파일도 함께 정리 (best-effort, 실패해도 기록 삭제는 이미 반영됨)
     const marker = "/workout-photos/";
-    const idx = log.photo_url.indexOf(marker);
-    if (idx !== -1) {
-      const path = log.photo_url.slice(idx + marker.length);
-      await supabase.storage.from("workout-photos").remove([path]);
+    const paths = log.photo_urls
+      .map((url) => {
+        const idx = url.indexOf(marker);
+        return idx === -1 ? null : url.slice(idx + marker.length);
+      })
+      .filter((p): p is string => !!p);
+    if (paths.length > 0) {
+      await supabase.storage.from("workout-photos").remove(paths);
     }
 
     setBusyId(null);
@@ -157,15 +161,7 @@ export function DayDrawer({
                     )}
                   </div>
 
-                  <div className="relative aspect-[4/5] w-full bg-surface-muted">
-                    <Image
-                      src={log.photo_url}
-                      alt={`${log.profile.nickname}의 운동 인증`}
-                      fill
-                      sizes="(max-width: 448px) 100vw, 448px"
-                      className="object-cover"
-                    />
-                  </div>
+                  <PhotoCarousel photoUrls={log.photo_urls} nickname={log.profile.nickname} />
 
                   {log.memo && (
                     <p className="px-4 py-3.5 text-[13px] leading-relaxed text-foreground">
@@ -188,6 +184,54 @@ export function DayDrawer({
             onMutated();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+/** 사진이 여러 장이면 옆으로 스와이프하며 볼 수 있는 캐러셀, 한 장이면 그냥 보여준다. */
+function PhotoCarousel({ photoUrls, nickname }: { photoUrls: string[]; nickname: string }) {
+  const [index, setIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    setIndex(i);
+  }
+
+  return (
+    <div className="relative aspect-[4/5] w-full bg-surface-muted">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-contain scroll-smooth [&::-webkit-scrollbar]:hidden"
+      >
+        {photoUrls.map((url, i) => (
+          <div key={url} className="relative h-full w-full shrink-0 snap-center">
+            <Image
+              src={url}
+              alt={`${nickname}의 운동 인증 ${i + 1}`}
+              fill
+              sizes="(max-width: 448px) 100vw, 448px"
+              className="object-cover"
+            />
+          </div>
+        ))}
+      </div>
+
+      {photoUrls.length > 1 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
+          {photoUrls.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${
+                i === index ? "w-4 bg-white" : "w-1.5 bg-white/50"
+              }`}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

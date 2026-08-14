@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, X } from "lucide-react";
+import { Camera, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toDateKey } from "@/lib/date";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -14,25 +14,35 @@ type Props = {
   onUploaded: () => void;
 };
 
+const MAX_PHOTOS = 5;
+
 export function UploadSheet({ userId, onClose, onUploaded }: Props) {
   useLockBodyScroll();
   const showToast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [memo, setMemo] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0];
-    if (!picked) return;
-    setFile(picked);
-    setPreview(URL.createObjectURL(picked));
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
+    const room = MAX_PHOTOS - files.length;
+    const accepted = picked.slice(0, room);
+    setFiles((prev) => [...prev, ...accepted]);
+    setPreviews((prev) => [...prev, ...accepted.map((f) => URL.createObjectURL(f))]);
+    e.target.value = ""; // 같은 파일 다시 선택 가능하도록
+  }
+
+  function removePhoto(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleSubmit() {
-    if (!file) {
+    if (files.length === 0) {
       setError("사진을 먼저 선택해 주세요.");
       return;
     }
@@ -41,27 +51,32 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
 
     const supabase = createClient();
     const todayKey = toDateKey(new Date());
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${userId}/${todayKey}-${Date.now()}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("workout-photos")
-      .upload(path, file, { cacheControl: "3600", upsert: false });
+    const photoUrls: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${userId}/${todayKey}-${Date.now()}-${photoUrls.length}.${ext}`;
 
-    if (uploadError) {
-      setUploading(false);
-      setError("업로드에 실패했어요. 다시 시도해 주세요.");
-      return;
+      const { error: uploadError } = await supabase.storage
+        .from("workout-photos")
+        .upload(path, file, { cacheControl: "3600", upsert: false });
+
+      if (uploadError) {
+        setUploading(false);
+        setError("업로드에 실패했어요. 다시 시도해 주세요.");
+        return;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("workout-photos").getPublicUrl(path);
+      photoUrls.push(publicUrl);
     }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("workout-photos").getPublicUrl(path);
 
     const { error: insertError } = await supabase.from("workout_logs").insert({
       user_id: userId,
       log_date: todayKey,
-      photo_url: publicUrl,
+      photo_urls: photoUrls,
       memo: memo.trim() || null,
     });
 
@@ -85,10 +100,13 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
         <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-border" />
 
         <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-[18px] font-bold text-foreground">오늘 운동 인증</h3>
+          <div>
+            <h3 className="text-[18px] font-bold text-foreground">오늘 운동 인증</h3>
+            <p className="mt-0.5 text-[12px] text-muted">사진 최대 {MAX_PHOTOS}장까지 첨부할 수 있어요</p>
+          </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-muted hover:bg-border/60"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-muted text-muted hover:bg-border/60"
           >
             <X size={18} />
           </button>
@@ -101,23 +119,45 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
           ref={inputRef}
           type="file"
           accept="image/*"
+          multiple
           onChange={handleFileChange}
           className="hidden"
         />
 
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-border bg-surface-muted"
-        >
-          {preview ? (
-            <Image src={preview} alt="선택한 사진 미리보기" fill className="object-cover" />
-          ) : (
+        {previews.length === 0 ? (
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-border bg-surface-muted"
+          >
             <div className="flex flex-col items-center gap-2 text-muted">
               <Camera size={28} />
               <span className="text-[13px] font-medium">사진 선택하기</span>
             </div>
-          )}
-        </button>
+          </button>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {previews.map((src, i) => (
+              <div key={src} className="relative aspect-square overflow-hidden rounded-2xl bg-surface-muted">
+                <Image src={src} alt={`선택한 사진 ${i + 1}`} fill className="object-cover" />
+                <button
+                  onClick={() => removePhoto(i)}
+                  aria-label="사진 제거"
+                  className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+            {previews.length < MAX_PHOTOS && (
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="flex aspect-square items-center justify-center rounded-2xl border-2 border-dashed border-border bg-surface-muted text-muted"
+              >
+                <Plus size={22} />
+              </button>
+            )}
+          </div>
+        )}
 
         <textarea
           value={memo}

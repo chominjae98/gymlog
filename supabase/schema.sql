@@ -101,9 +101,10 @@ create table if not exists public.workout_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
   log_date date not null default (now() at time zone 'Asia/Seoul')::date,
-  photo_url text not null,
+  photo_urls text[] not null default '{}',
   memo text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint workout_logs_has_photo check (array_length(photo_urls, 1) > 0)
 );
 
 create index if not exists workout_logs_log_date_idx on public.workout_logs (log_date);
