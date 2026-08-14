@@ -27,8 +27,6 @@ export function FineSection({
   progress: WeeklyProgress[];
   finePerDay: number;
 }) {
-  const fined = progress.filter((p) => p.status === "fined");
-  const totalFine = fined.length * finePerDay;
   const sorted = [...progress].sort((a, b) => {
     const order = { fined: 0, "at-risk": 1, safe: 2, "no-goal": 3 };
     return order[a.status] - order[b.status];
@@ -36,16 +34,9 @@ export function FineSection({
 
   return (
     <div className="surface-card p-5">
-      <div className="mb-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Users size={15} className="text-muted" />
-          <h2 className="text-[16px] font-bold text-foreground">이번 주 현황</h2>
-        </div>
-        {fined.length > 0 && (
-          <span className="text-[13px] font-semibold text-warn">
-            벌금 {fined.length}명 · {totalFine.toLocaleString()}원
-          </span>
-        )}
+      <div className="mb-3.5 flex items-center gap-1.5">
+        <Users size={15} className="text-muted" />
+        <h2 className="text-[16px] font-bold text-foreground">이번 주 현황</h2>
       </div>
 
       {sorted.length === 0 ? (
@@ -94,7 +85,7 @@ export function FineSection({
                     <DayDots
                       target={p.targetDays}
                       achieved={p.achievedDays}
-                      tone={p.status === "fined" ? "warn" : "brand"}
+                      tone="brand"
                     />
                   </div>
                 ) : (

@@ -153,6 +153,39 @@ create policy "settings are viewable by every logged in friend"
   using (true);
 
 -- ------------------------------------------------------------
+-- 4-1. fine_payments : 지난 주 벌금 정산(납부) 여부 체크
+--      금액은 저장하지 않고 항상 app_settings.fine_per_day 기준으로 계산 —
+--      여기는 "누가 냈는지" 여부만 기록한다.
+-- ------------------------------------------------------------
+create table if not exists public.fine_payments (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  week_start date not null,
+  paid boolean not null default false,
+  paid_at timestamptz,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, week_start)
+);
+
+alter table public.fine_payments enable row level security;
+
+create policy "fine payments are viewable by every logged in friend"
+  on public.fine_payments for select
+  to authenticated
+  using (true);
+
+-- 정산 체크는 총무 역할을 누가 맡든 관리할 수 있게 모든 로그인 사용자에게 허용
+create policy "any logged in friend can record a fine payment"
+  on public.fine_payments for insert
+  to authenticated
+  with check (true);
+
+create policy "any logged in friend can update a fine payment"
+  on public.fine_payments for update
+  to authenticated
+  using (true)
+  with check (true);
+
+-- ------------------------------------------------------------
 -- 5. Storage : 운동 인증 사진 버킷
 -- ------------------------------------------------------------
 insert into storage.buckets (id, name, public)

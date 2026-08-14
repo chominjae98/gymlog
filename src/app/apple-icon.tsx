@@ -13,13 +13,20 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#1b1d1a",
-          color: "#faf9f5",
-          fontSize: 84,
-          fontWeight: 700,
+          // iOS가 알아서 둥근 모서리로 잘라주므로 배경은 꽉 채운다.
+          background: "linear-gradient(150deg, #35d98a 0%, #17914f 65%, #0f6b3a 100%)",
         }}
       >
-        완
+        <div
+          style={{
+            fontSize: 76,
+            fontWeight: 700,
+            color: "#ffffff",
+            letterSpacing: -2,
+          }}
+        >
+          완
+        </div>
       </div>
     ),
     { ...size }

@@ -27,23 +27,26 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <div className="safe-top flex flex-1 flex-col justify-center px-6 py-10">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-background">
+      {/* 아주 은은한 포인트 컬러 글로우. 헤드라인 뒤에만 살짝, 화면 전체를 덮지 않는다. */}
+      <div className="pointer-events-none absolute left-1/2 top-[14%] h-56 w-[85%] -translate-x-1/2 rounded-full bg-brand-soft/70 blur-[64px]" />
+
+      <div className="safe-top relative flex flex-1 flex-col justify-center px-6 py-10">
         <div className="animate-fade-up mx-auto w-full max-w-sm text-center">
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[30px] font-bold leading-[1.25] tracking-tight text-foreground">
             오늘 운동,
             <br />
-            친구들이랑 같이 인증해요
+            <span className="text-brand-strong">친구들이랑 같이</span> 인증해요
           </h1>
 
-          <div className="mt-9 grid grid-cols-3 gap-2 text-left">
+          <div className="mt-10 grid grid-cols-3 gap-2.5 text-left">
             <FeatureChip label="달력 인증" emoji="🗓️" />
             <FeatureChip label="주간 목표" emoji="🎯" />
             <FeatureChip label="벌금 리스트" emoji="💸" />
           </div>
         </div>
 
-        <div className="animate-fade-up mx-auto mt-12 w-full max-w-sm" style={{ animationDelay: "0.1s" }}>
+        <div className="animate-fade-up mx-auto mt-14 w-full max-w-sm" style={{ animationDelay: "0.1s" }}>
           {authError && (
             <p className="mb-3 rounded-xl bg-warn-soft px-4 py-2.5 text-center text-[13px] font-medium text-warn">
               로그인에 실패했어요. 다시 시도해 주세요.
@@ -52,7 +55,7 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] py-4 text-[15px] font-semibold text-[#1B1D1A] transition active:scale-[0.98] disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] py-4 text-[15px] font-semibold text-[#1B1D1A] shadow-[0_8px_20px_-8px_rgba(254,229,0,0.7)] transition active:scale-[0.98] disabled:opacity-60"
           >
             <KakaoIcon />
             {loading ? "이동 중..." : "카카오로 3초 만에 시작하기"}
@@ -65,9 +68,11 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
 
 function FeatureChip({ label, emoji }: { label: string; emoji: string }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-surface px-2 py-3.5 shadow-[var(--shadow-soft)]">
-      <span className="text-lg">{emoji}</span>
-      <span className="text-[11px] font-medium text-muted">{label}</span>
+    <div className="surface-card flex flex-col items-center gap-2 px-2 py-4">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-base">
+        {emoji}
+      </span>
+      <span className="text-[11px] font-semibold text-muted">{label}</span>
     </div>
   );
 }

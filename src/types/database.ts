@@ -29,6 +29,14 @@ export type AppSettings = {
   fine_per_day: number;
 };
 
+export type FinePayment = {
+  user_id: string;
+  week_start: string; // YYYY-MM-DD
+  paid: boolean;
+  paid_at: string | null;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -61,6 +69,12 @@ export type Database = {
         Row: AppSettings;
         Insert: Partial<AppSettings>;
         Update: Partial<AppSettings>;
+        Relationships: [];
+      };
+      fine_payments: {
+        Row: FinePayment;
+        Insert: Partial<FinePayment> & { user_id: string; week_start: string };
+        Update: Partial<FinePayment>;
         Relationships: [];
       };
     };

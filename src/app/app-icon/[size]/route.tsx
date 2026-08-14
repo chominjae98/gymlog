@@ -7,7 +7,7 @@ export async function GET(
 ) {
   const { size } = await params;
   const dimension = Number(size) === 512 ? 512 : 192;
-  const glyphSize = Math.round(dimension * 0.42);
+  const glyphSize = Math.round(dimension * 0.38);
 
   return new ImageResponse(
     (
@@ -18,14 +18,16 @@ export async function GET(
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#1b1d1a",
+          // 마스커블 아이콘은 OS가 자체적으로 모양을 잘라내므로 배경은 항상 꽉 채운다.
+          background: "linear-gradient(150deg, #35d98a 0%, #17914f 65%, #0f6b3a 100%)",
         }}
       >
         <div
           style={{
             fontSize: glyphSize,
             fontWeight: 700,
-            color: "#faf9f5",
+            color: "#ffffff",
+            letterSpacing: -2,
           }}
         >
           완

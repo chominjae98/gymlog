@@ -9,10 +9,12 @@ export function Header({
   profile,
   myGoal,
   onGoalClick,
+  onOpenSettlement,
 }: {
   profile: Profile;
   myGoal: number | null;
   onGoalClick: () => void;
+  onOpenSettlement: () => void;
 }) {
   return (
     <header className="safe-top sticky top-0 z-30 bg-background/80 px-4 pb-3 backdrop-blur-md">
@@ -42,7 +44,7 @@ export function Header({
             <Target size={13} className="text-brand-strong" />
             {myGoal ? `주 ${myGoal}일` : "목표 설정"}
           </button>
-          <HeaderMenu />
+          <HeaderMenu onOpenSettlement={onOpenSettlement} />
         </div>
       </div>
     </header>

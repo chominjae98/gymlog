@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EllipsisVertical, LogOut, Moon, Sun } from "lucide-react";
+import { EllipsisVertical, LogOut, Moon, Sun, Wallet } from "lucide-react";
 import { signOut } from "@/lib/auth";
 
 type Theme = "light" | "dark";
@@ -13,7 +13,7 @@ function applyTheme(theme: Theme) {
 
 /** 헤더 오른쪽 끝의 "···" 메뉴. 다크모드 전환 / 로그아웃처럼 자주 안 쓰거나
  * 실수로 누르면 곤란한 액션을 여기 숨겨둔다. */
-export function HeaderMenu() {
+export function HeaderMenu({ onOpenSettlement }: { onOpenSettlement: () => void }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("light");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -61,6 +61,16 @@ export function HeaderMenu() {
           >
             {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
             {theme === "dark" ? "라이트 모드" : "다크 모드"}
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onOpenSettlement();
+            }}
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13px] font-medium text-foreground transition hover:bg-surface-muted"
+          >
+            <Wallet size={15} />
+            벌금 정산
           </button>
           <div className="mx-2 h-px bg-border" />
           <button

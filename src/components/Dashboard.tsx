@@ -10,7 +10,13 @@ import { FineSection } from "@/components/FineSection";
 import { FineWatchlist } from "@/components/FineWatchlist";
 import { WeeklyGoalSheet } from "@/components/WeeklyGoalSheet";
 import { UploadSheet } from "@/components/UploadSheet";
-import { countUniquePeople, groupLogsByDate, todayKey } from "@/lib/dashboard-data";
+import { SettlementSheet } from "@/components/SettlementSheet";
+import {
+  computeWeeklyStatus,
+  countUniquePeople,
+  groupLogsByDate,
+  todayKey,
+} from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
 import { isSameMonthGuard } from "@/lib/date";
 import type { Profile, WeeklyProgress, WorkoutLogWithProfile } from "@/types/database";
@@ -42,6 +48,27 @@ export function Dashboard({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [showGoal, setShowGoal] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [showSettlement, setShowSettlement] = useState(false);
+
+  // 서버가 새로 내려준 값(props)을 기본값 삼아 로컬 상태로 들고 있다가,
+  // 사용자가 방금 한 행동(목표 변경 등)을 router.refresh() 응답을 기다리지 않고
+  // 화면에 바로 반영(낙관적 업데이트)하기 위한 override 상태.
+  const [prevInitialProgress, setPrevInitialProgress] = useState(initialWeeklyProgress);
+  const [progressOverride, setProgressOverride] = useState<WeeklyProgress[] | null>(null);
+  if (initialWeeklyProgress !== prevInitialProgress) {
+    // 서버에서 새 데이터가 도착 → 로컬 추측(override)은 버리고 서버 값을 신뢰한다.
+    setPrevInitialProgress(initialWeeklyProgress);
+    setProgressOverride(null);
+  }
+  const weeklyProgress = progressOverride ?? initialWeeklyProgress;
+
+  const [prevInitialGoal, setPrevInitialGoal] = useState(initialMyGoal);
+  const [myGoalOverride, setMyGoalOverride] = useState<number | null | undefined>(undefined);
+  if (initialMyGoal !== prevInitialGoal) {
+    setPrevInitialGoal(initialMyGoal);
+    setMyGoalOverride(undefined);
+  }
+  const myGoal = myGoalOverride !== undefined ? myGoalOverride : initialMyGoal;
 
   const viewingCurrentMonth = isSameMonthGuard(monthDate, today);
   const monthLogs = viewingCurrentMonth ? initialMonthLogs : otherMonthLogs ?? [];
@@ -66,7 +93,12 @@ export function Dashboard({
       <div className="pointer-events-none absolute -top-16 right-[-4rem] h-64 w-64 rounded-full bg-brand-soft/60 blur-3xl" />
       <div className="pointer-events-none absolute top-72 -left-20 h-56 w-56 rounded-full bg-warn-soft/40 blur-3xl" />
 
-      <Header profile={profile} myGoal={initialMyGoal} onGoalClick={() => setShowGoal(true)} />
+      <Header
+        profile={profile}
+        myGoal={myGoal}
+        onGoalClick={() => setShowGoal(true)}
+        onOpenSettlement={() => setShowSettlement(true)}
+      />
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
         <button
@@ -86,7 +118,7 @@ export function Dashboard({
           </span>
         </button>
 
-        <FineWatchlist progress={initialWeeklyProgress} finePerDay={finePerDay} />
+        <FineWatchlist progress={weeklyProgress} finePerDay={finePerDay} />
 
         <CalendarGrid
           monthDate={monthDate}
@@ -96,7 +128,7 @@ export function Dashboard({
           onSelectDate={setSelectedKey}
         />
 
-        <FineSection progress={initialWeeklyProgress} finePerDay={finePerDay} />
+        <FineSection progress={weeklyProgress} finePerDay={finePerDay} />
       </main>
 
       <button
@@ -125,9 +157,22 @@ export function Dashboard({
       {showGoal && (
         <WeeklyGoalSheet
           userId={userId}
-          currentGoal={initialMyGoal}
+          currentGoal={myGoal}
           onClose={() => setShowGoal(false)}
-          onSaved={() => {
+          onSaved={(targetDays) => {
+            // 버튼 누르자마자 바로 화면에 반영 (서버 응답 기다리지 않음)
+            setMyGoalOverride(targetDays);
+            setProgressOverride(
+              weeklyProgress.map((p) =>
+                p.profile.id === userId
+                  ? {
+                      ...p,
+                      targetDays,
+                      status: computeWeeklyStatus(p.achievedDays, targetDays, p.remainingDaysInWeek),
+                    }
+                  : p
+              )
+            );
             setShowGoal(false);
             router.refresh();
           }}
@@ -139,11 +184,27 @@ export function Dashboard({
           userId={userId}
           onClose={() => setShowUpload(false)}
           onUploaded={() => {
+            // 업로드 즉시 "오늘 달성 +1"로 가정하고 먼저 반영, 서버 새로고침으로 뒤이어 확정
+            setProgressOverride(
+              weeklyProgress.map((p) => {
+                if (p.profile.id !== userId) return p;
+                const achievedDays = p.achievedDays + 1;
+                return {
+                  ...p,
+                  achievedDays,
+                  status: computeWeeklyStatus(achievedDays, p.targetDays, p.remainingDaysInWeek),
+                };
+              })
+            );
             setShowUpload(false);
             setSelectedKey(tKey);
             router.refresh();
           }}
         />
+      )}
+
+      {showSettlement && (
+        <SettlementSheet finePerDay={finePerDay} onClose={() => setShowSettlement(false)} />
       )}
     </div>
   );

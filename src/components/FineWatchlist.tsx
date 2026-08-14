@@ -82,7 +82,7 @@ export function FineWatchlist({
                     <DayDots
                       target={p.targetDays}
                       achieved={p.achievedDays}
-                      tone={isFined ? "warn" : "brand"}
+                      tone="brand"
                     />
                   </div>
                 )}
