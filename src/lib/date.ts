@@ -68,13 +68,6 @@ export function formatTime(dateIso: string) {
   return format(new Date(dateIso), "a h:mm", { locale: ko });
 }
 
-/** "8.4 - 8.10" 같은 주간 범위 라벨 (정산 내역 화면용) */
-export function formatWeekRange(weekStartKey: string) {
-  const start = new Date(`${weekStartKey}T00:00:00`);
-  const end = endOfWeek(start, WEEK_OPTS);
-  return `${format(start, "M.d")} - ${format(end, "M.d")}`;
-}
-
 export const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
 /** 두 날짜가 같은 연/월인지 (다음 달 버튼 비활성화용) */

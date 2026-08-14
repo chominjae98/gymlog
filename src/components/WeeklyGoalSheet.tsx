@@ -86,11 +86,11 @@ export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props
             <Minus size={22} />
           </button>
 
-          <div className="flex w-16 items-baseline justify-center gap-0.5">
+          <div className="flex w-20 items-baseline justify-center gap-1">
             <span className="text-[44px] font-bold leading-none text-foreground">
               {selected}
             </span>
-            <span className="text-[17px] font-semibold text-foreground">일</span>
+            <span className="text-[44px] font-bold leading-none text-foreground">일</span>
           </div>
 
           <button
