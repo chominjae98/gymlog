@@ -17,7 +17,7 @@ import {
   todayKey,
 } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
-import { isSameMonthGuard } from "@/lib/date";
+import { isSameMonthGuard, nowInSeoul } from "@/lib/date";
 import type { Profile, WeeklyProgress, WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
@@ -38,7 +38,7 @@ export function Dashboard({
   weeklyFine,
 }: Props) {
   const router = useRouter();
-  const today = new Date();
+  const today = nowInSeoul();
 
   const [monthDate, setMonthDate] = useState(today);
   // 오늘이 속한 달은 서버에서 내려온 최신 값을 그대로 쓰고,

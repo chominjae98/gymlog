@@ -5,6 +5,7 @@ import {
   formatMonthTitle,
   getMonthGrid,
   isSameMonthGuard,
+  nowInSeoul,
   WEEKDAY_LABELS,
 } from "@/lib/date";
 import { countUniquePeople } from "@/lib/dashboard-data";
@@ -26,7 +27,7 @@ export function CalendarGrid({
   onSelectDate,
 }: Props) {
   const grid = getMonthGrid(monthDate);
-  const canGoNext = !isSameMonthGuard(monthDate, new Date());
+  const canGoNext = !isSameMonthGuard(monthDate, nowInSeoul());
 
   return (
     <div className="surface-card overflow-hidden px-1 pb-3">

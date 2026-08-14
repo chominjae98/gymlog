@@ -10,6 +10,7 @@ import {
   getWeeklyProgress,
 } from "@/lib/dashboard-data";
 import { SUPABASE_CONFIGURED } from "@/lib/supabase-configured";
+import { nowInSeoul } from "@/lib/date";
 
 export default async function Home({
   searchParams,
@@ -28,7 +29,7 @@ export default async function Home({
     return <LoginScreen authError={params?.auth_error === "1"} />;
   }
 
-  const today = new Date();
+  const today = nowInSeoul();
 
   const [profile, monthLogs, weeklyProgress, myGoal, finePerDay] =
     await Promise.all([

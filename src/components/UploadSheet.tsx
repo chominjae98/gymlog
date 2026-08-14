@@ -4,8 +4,9 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { toDateKey } from "@/lib/date";
+import { nowInSeoul, toDateKey } from "@/lib/date";
 import { uploadWorkoutPhotos } from "@/lib/storage-upload";
+import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 
@@ -19,6 +20,7 @@ const MAX_PHOTOS = 5;
 
 export function UploadSheet({ userId, onClose, onUploaded }: Props) {
   useLockBodyScroll();
+  useCloseOnBackButton(onClose);
   const showToast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -51,7 +53,7 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
     setError(null);
 
     const supabase = createClient();
-    const todayKey = toDateKey(new Date());
+    const todayKey = toDateKey(nowInSeoul());
 
     let photoUrls: string[];
     try {

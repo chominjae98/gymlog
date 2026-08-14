@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
+import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import type { WorkoutLogWithProfile } from "@/types/database";
@@ -20,6 +21,7 @@ const MAX_PHOTOS = 5;
 /** 이미 올린 인증 게시물의 사진(여러 장)/메모를 통째로 수정하는 바텀시트. */
 export function EditPostSheet({ log, onClose, onSaved }: Props) {
   useLockBodyScroll();
+  useCloseOnBackButton(onClose);
   const showToast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   // 기존에 올라가 있던 사진 (남겨둘 것만 유지)

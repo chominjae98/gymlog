@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getWeekStartKey } from "@/lib/date";
+import { getWeekStartKey, nowInSeoul } from "@/lib/date";
+import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 
@@ -19,6 +20,7 @@ const MAX_DAYS = 7;
 
 export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props) {
   useLockBodyScroll();
+  useCloseOnBackButton(onClose);
   const showToast = useToast();
   const [selected, setSelected] = useState(currentGoal ?? 4);
   const [saving, setSaving] = useState(false);
@@ -28,7 +30,7 @@ export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props
     setSaving(true);
     setError(null);
     const supabase = createClient();
-    const weekStart = getWeekStartKey(new Date());
+    const weekStart = getWeekStartKey(nowInSeoul());
 
     const { error: upsertError } = await supabase
       .from("weekly_goals")

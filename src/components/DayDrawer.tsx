@@ -7,6 +7,7 @@ import { formatDayTitle, formatTime } from "@/lib/date";
 import { countUniquePeople } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos } from "@/lib/storage-upload";
+import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import { EditPostSheet } from "@/components/EditPostSheet";
@@ -32,6 +33,7 @@ export function DayDrawer({
   onMutated,
 }: Props) {
   useLockBodyScroll();
+  useCloseOnBackButton(onClose);
   const showToast = useToast();
   const date = new Date(`${dateKey}T00:00:00`);
   const peopleCount = countUniquePeople(logs);
@@ -185,29 +187,49 @@ export function DayDrawer({
 function PhotoCarousel({ photoUrls, nickname }: { photoUrls: string[]; nickname: string }) {
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
 
+  // 스크롤 이벤트는 드래그 중 매우 자주 발생하므로, 프레임당 한 번만
+  // 상태를 갱신해 불필요한 리렌더(iOS에서 화면 깨짐/지지직의 한 원인)를 줄인다.
   function handleScroll() {
-    const el = scrollRef.current;
-    if (!el) return;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    setIndex(i);
+    if (rafRef.current != null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const el = scrollRef.current;
+      if (!el) return;
+      const i = Math.round(el.scrollLeft / el.clientWidth);
+      setIndex((prev) => (prev === i ? prev : i));
+    });
   }
 
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   return (
-    <div className="relative aspect-[4/5] w-full bg-surface-muted">
+    <div className="relative aspect-[4/5] w-full overflow-hidden bg-surface-muted">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-contain scroll-smooth [&::-webkit-scrollbar]:hidden"
+        // touch-pan-x: 이 영역에서 가로 스와이프는 캐러셀이 직접 처리하되,
+        // 세로 스와이프는 가로채지 않고 그대로 상위(세로 스크롤 영역)로 넘긴다.
+        // (안 넣으면 사진이 2장 이상일 때 세로 스크롤이 막히는 버그가 있었음)
+        className="flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto overscroll-contain [&::-webkit-scrollbar]:hidden"
       >
         {photoUrls.map((url, i) => (
-          <div key={url} className="relative h-full w-full shrink-0 snap-center">
+          <div
+            key={url}
+            className="relative h-full w-full shrink-0 snap-center [backface-visibility:hidden] [transform:translateZ(0)]"
+          >
             <Image
               src={url}
               alt={`${nickname}의 운동 인증 ${i + 1}`}
               fill
               sizes="(max-width: 448px) 100vw, 448px"
               className="object-cover"
+              priority={i === 0}
             />
           </div>
         ))}
