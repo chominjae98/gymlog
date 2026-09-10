@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Calendar, Camera, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatDayTitle, nowInSeoul, toDateKey } from "@/lib/date";
+import { groupLogsByDate } from "@/lib/dashboard-data";
+import { fetchMonthLogs } from "@/lib/client-data";
 import { uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -16,7 +18,7 @@ type Props = {
   userId: string;
   initialDateKey: string;
   onClose: () => void;
-  onUploaded: (dateKey: string) => void;
+  onUploaded: (dateKey: string, photoUrls: string[], memo: string | null) => void;
 };
 
 const MAX_PHOTOS = 5;
@@ -40,6 +42,20 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
   const [showCalendar, setShowCalendar] = useState(false);
   const selectedDateKey = toDateKey(selectedDate);
   const isSelectedToday = selectedDateKey === toDateKey(today);
+
+  // 달력에도 (대시보드처럼) 누가 인증했는지 점으로 보여주기 위해, 달력에 표시 중인
+  // 달의 기록을 따로 불러온다.
+  const [calendarLogsByDate, setCalendarLogsByDate] =
+    useState<Map<string, WorkoutLogWithProfile[]>>(EMPTY_LOGS_BY_DATE);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMonthLogs(calendarMonth).then((logs) => {
+      if (!cancelled) setCalendarLogsByDate(groupLogsByDate(logs));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [calendarMonth]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -98,7 +114,7 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
         ? "오늘 운동을 인증했어요! 🔥"
         : `${formatDayTitle(selectedDate)} 운동을 기록했어요! 🔥`
     );
-    onUploaded(selectedDateKey);
+    onUploaded(selectedDateKey, photoUrls, memo.trim() || null);
   }
 
   return (
@@ -142,7 +158,7 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
             <CalendarGrid
               monthDate={calendarMonth}
               onMonthChange={setCalendarMonth}
-              logsByDate={EMPTY_LOGS_BY_DATE}
+              logsByDate={calendarLogsByDate}
               selectedKey={selectedDateKey}
               onSelectDate={(key) => {
                 setSelectedDate(new Date(`${key}T00:00:00`));

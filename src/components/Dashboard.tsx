@@ -69,8 +69,22 @@ export function Dashboard({
   }
   const myGoal = myGoalOverride !== undefined ? myGoalOverride : initialMyGoal;
 
+  // 방금 올린 사진이 router.refresh()로 서버 데이터가 갱신되기 전(약 1~2초) 동안에도
+  // 바로 화면에 보이도록 하는 낙관적 업데이트용 임시 기록.
+  // 서버에서 새 monthLogs가 도착하면(진짜 기록이 포함되어 있으므로) 즉시 버린다.
+  const [prevInitialMonthLogs, setPrevInitialMonthLogs] = useState(initialMonthLogs);
+  const [optimisticLog, setOptimisticLog] = useState<WorkoutLogWithProfile | null>(null);
+  if (initialMonthLogs !== prevInitialMonthLogs) {
+    setPrevInitialMonthLogs(initialMonthLogs);
+    setOptimisticLog(null);
+  }
+
   const viewingCurrentMonth = isSameMonthGuard(monthDate, today);
-  const monthLogs = viewingCurrentMonth ? initialMonthLogs : otherMonthLogs ?? [];
+  const baseMonthLogs = viewingCurrentMonth ? initialMonthLogs : otherMonthLogs ?? [];
+  const monthLogs =
+    optimisticLog && isSameMonthGuard(new Date(`${optimisticLog.log_date}T00:00:00`), monthDate)
+      ? [optimisticLog, ...baseMonthLogs]
+      : baseMonthLogs;
 
   async function handleMonthChange(next: Date) {
     setMonthDate(next);
@@ -173,8 +187,10 @@ export function Dashboard({
           onClose={() => setSelectedKey(null)}
           isToday={selectedKey === tKey}
           onUploadClick={() => {
+            // 드로어는 닫지 않고 그대로 둔 채 업로드 시트를 그 위에 띄운다(z-index로 겹침).
+            // 드로어를 먼저 닫고 업로드 시트를 여는 방식은 전체 화면 블러 오버레이 두 개가
+            // 같은 프레임에 교체되면서 화면이 순간적으로 깜빡이는 원인이 되었다.
             setUploadDateKey(selectedKey);
-            setSelectedKey(null);
             setShowUpload(true);
           }}
           onMutated={() => router.refresh()}
@@ -211,7 +227,18 @@ export function Dashboard({
           userId={userId}
           initialDateKey={uploadDateKey ?? tKey}
           onClose={() => setShowUpload(false)}
-          onUploaded={(uploadedDateKey) => {
+          onUploaded={(uploadedDateKey, photoUrls, memo) => {
+            // 서버 새로고침(router.refresh)이 끝나기 전까지 방금 올린 사진을 바로 화면에 보여준다.
+            setOptimisticLog({
+              id: `optimistic-${Date.now()}`,
+              user_id: userId,
+              log_date: uploadedDateKey,
+              photo_urls: photoUrls,
+              memo,
+              created_at: new Date().toISOString(),
+              profile: { id: userId, nickname: profile.nickname, avatar_url: profile.avatar_url },
+            });
+
             // 업로드한 날짜가 "오늘"일 때만 이번 주 달성 현황에 즉시 +1로 낙관적 반영한다.
             // 과거 날짜는 이번 주 범위가 아닐 수도 있어 서버 새로고침 결과를 그대로 신뢰한다.
             if (uploadedDateKey === tKey) {
@@ -227,8 +254,14 @@ export function Dashboard({
                 })
               );
             }
+
             setShowUpload(false);
-            setSelectedKey(uploadedDateKey);
+            if (selectedKey !== uploadedDateKey) {
+              // 드로어가 이미 이 날짜로 열려 있던 경우(드로어 안에서 업로드)는 그대로 두고,
+              // "+" 버튼으로 새로 업로드한 경우에만 드로어를 새로 연다. 업로드 시트가 닫히는 것과
+              // 드로어가 뜨는 게 같은 프레임에 겹치면 화면이 깜빡이므로 한 틱 늦춰서 연다.
+              window.setTimeout(() => setSelectedKey(uploadedDateKey), 80);
+            }
             router.refresh();
           }}
         />
