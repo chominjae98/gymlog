@@ -104,7 +104,10 @@ create table if not exists public.workout_logs (
   photo_urls text[] not null default '{}',
   memo text,
   created_at timestamptz not null default now(),
-  constraint workout_logs_has_photo check (array_length(photo_urls, 1) > 0)
+  constraint workout_logs_has_photo check (array_length(photo_urls, 1) > 0),
+  -- 과거 날짜 기록 업로드는 허용하되, 클라이언트 검증을 우회해서 미래 날짜로
+  -- 기록을 만드는 것은 DB 레벨에서도 막는다.
+  constraint workout_logs_log_date_not_future check (log_date <= (now() at time zone 'Asia/Seoul')::date)
 );
 
 create index if not exists workout_logs_log_date_idx on public.workout_logs (log_date);

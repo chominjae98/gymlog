@@ -2,23 +2,27 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, Plus, X } from "lucide-react";
+import { Calendar, Camera, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { nowInSeoul, toDateKey } from "@/lib/date";
+import { formatDayTitle, nowInSeoul, toDateKey } from "@/lib/date";
 import { uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
+import { CalendarGrid } from "@/components/CalendarGrid";
+import type { WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
   userId: string;
+  initialDateKey: string;
   onClose: () => void;
-  onUploaded: () => void;
+  onUploaded: (dateKey: string) => void;
 };
 
 const MAX_PHOTOS = 5;
+const EMPTY_LOGS_BY_DATE = new Map<string, WorkoutLogWithProfile[]>();
 
-export function UploadSheet({ userId, onClose, onUploaded }: Props) {
+export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
@@ -28,6 +32,14 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
   const [memo, setMemo] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const today = nowInSeoul();
+  const initialDate = new Date(`${initialDateKey}T00:00:00`);
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [calendarMonth, setCalendarMonth] = useState(initialDate);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const selectedDateKey = toDateKey(selectedDate);
+  const isSelectedToday = selectedDateKey === toDateKey(today);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -49,15 +61,20 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
       setError("사진을 먼저 선택해 주세요.");
       return;
     }
+    // 화면(달력)에서 미래 날짜는 애초에 선택할 수 없지만, 혹시 모를 상황을 대비해 한 번 더 막는다.
+    if (selectedDateKey > toDateKey(nowInSeoul())) {
+      setError("미래 날짜에는 기록을 올릴 수 없어요.");
+      return;
+    }
+
     setUploading(true);
     setError(null);
 
     const supabase = createClient();
-    const todayKey = toDateKey(nowInSeoul());
 
     let photoUrls: string[];
     try {
-      photoUrls = await uploadWorkoutPhotos(supabase, userId, todayKey, files);
+      photoUrls = await uploadWorkoutPhotos(supabase, userId, selectedDateKey, files);
     } catch {
       setUploading(false);
       setError("업로드에 실패했어요. 다시 시도해 주세요.");
@@ -66,7 +83,7 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
 
     const { error: insertError } = await supabase.from("workout_logs").insert({
       user_id: userId,
-      log_date: todayKey,
+      log_date: selectedDateKey,
       photo_urls: photoUrls,
       memo: memo.trim() || null,
     });
@@ -76,8 +93,12 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
       setError("기록 저장에 실패했어요. 다시 시도해 주세요.");
       return;
     }
-    showToast("오늘 운동을 인증했어요! 🔥");
-    onUploaded();
+    showToast(
+      isSelectedToday
+        ? "오늘 운동을 인증했어요! 🔥"
+        : `${formatDayTitle(selectedDate)} 운동을 기록했어요! 🔥`
+    );
+    onUploaded(selectedDateKey);
   }
 
   return (
@@ -90,9 +111,11 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
       <div className="animate-sheet-up safe-bottom relative z-10 max-h-[88dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] bg-background px-6 pt-5 pb-10 shadow-[var(--shadow-pop)]">
         <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-border" />
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-[18px] font-bold text-foreground">오늘 운동 인증</h3>
+            <h3 className="text-[18px] font-bold text-foreground">
+              {isSelectedToday ? "오늘 운동 인증" : `${formatDayTitle(selectedDate)} 운동 인증`}
+            </h3>
             <p className="mt-0.5 text-[12px] text-muted">사진 최대 {MAX_PHOTOS}장까지 첨부할 수 있어요</p>
           </div>
           <button
@@ -102,6 +125,32 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
             <X size={18} />
           </button>
         </div>
+
+        <button
+          onClick={() => setShowCalendar((v) => !v)}
+          className="mb-4 flex w-full items-center gap-2 rounded-2xl bg-surface-muted px-4 py-3 text-left text-[13px] font-semibold text-foreground transition active:scale-[0.99]"
+        >
+          <Calendar size={16} className="shrink-0 text-brand" />
+          {isSelectedToday ? "오늘" : formatDayTitle(selectedDate)}
+          <span className="ml-auto text-[12px] font-medium text-muted">
+            {showCalendar ? "달력 닫기" : "날짜 변경"}
+          </span>
+        </button>
+
+        {showCalendar && (
+          <div className="mb-4">
+            <CalendarGrid
+              monthDate={calendarMonth}
+              onMonthChange={setCalendarMonth}
+              logsByDate={EMPTY_LOGS_BY_DATE}
+              selectedKey={selectedDateKey}
+              onSelectDate={(key) => {
+                setSelectedDate(new Date(`${key}T00:00:00`));
+                setShowCalendar(false);
+              }}
+            />
+          </div>
+        )}
 
         {/* capture 속성을 넣지 않아야 iOS/Android 둘 다 "카메라로 촬영" / "사진첩에서 선택"을
             고를 수 있는 기본 액션시트가 뜬다. (capture="environment"를 넣으면 iOS Safari에서는
@@ -153,7 +202,7 @@ export function UploadSheet({ userId, onClose, onUploaded }: Props) {
         <textarea
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
-          placeholder="오늘 운동 한 줄 메모 (선택)"
+          placeholder="운동 한 줄 메모 (선택)"
           rows={2}
           maxLength={200}
           className="mt-5 w-full resize-none rounded-2xl bg-surface-muted px-4 py-3.5 text-[14px] text-foreground outline-none"

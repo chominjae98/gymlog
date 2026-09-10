@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { EllipsisVertical, Pencil, Trash2, X } from "lucide-react";
-import { formatDayTitle, formatTime } from "@/lib/date";
+import { formatDayTitle, formatTime, nowInSeoul, toDateKey } from "@/lib/date";
 import { countUniquePeople } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos } from "@/lib/storage-upload";
@@ -37,6 +37,7 @@ export function DayDrawer({
   const showToast = useToast();
   const date = new Date(`${dateKey}T00:00:00`);
   const peopleCount = countUniquePeople(logs);
+  const isFuture = dateKey > toDateKey(nowInSeoul());
 
   const [editingLog, setEditingLog] = useState<WorkoutLogWithProfile | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -99,22 +100,20 @@ export function DayDrawer({
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-[15px] font-semibold text-foreground">
-                {isToday
-                  ? "오늘 첫 인증의 주인공이 되어보세요"
-                  : "이 날은 아무도 인증하지 않았어요"}
+                {isToday ? "오늘 첫 인증의 주인공이 되어보세요" : "이 날은 아무도 인증하지 않았어요"}
               </p>
-              {!isToday && (
+              {isFuture && (
                 <p className="text-[13px] text-muted">
                   다른 날짜를 눌러 인증 기록을 확인해보세요
                 </p>
               )}
             </div>
-            {isToday && (
+            {!isFuture && (
               <button
                 onClick={onUploadClick}
                 className="mt-2 rounded-full bg-brand px-6 py-3 text-[13px] font-semibold text-white shadow-[var(--shadow-soft)] transition active:scale-95"
               >
-                운동 인증하기
+                {isToday ? "운동 인증하기" : "이 날짜로 인증하기"}
               </button>
             )}
           </div>
@@ -289,7 +288,7 @@ function PhotoCarousel({ photoUrls, nickname }: { photoUrls: string[]; nickname:
               alt={`${nickname}의 운동 인증 ${i + 1}`}
               fill
               sizes="(max-width: 448px) 100vw, 448px"
-              className="object-cover"
+              className="object-contain"
               priority={i === 0}
             />
           </div>

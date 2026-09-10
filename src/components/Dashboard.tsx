@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -47,6 +47,7 @@ export function Dashboard({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [showGoal, setShowGoal] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadDateKey, setUploadDateKey] = useState<string | null>(null);
 
   // 서버가 새로 내려준 값(props)을 기본값 삼아 로컬 상태로 들고 있다가,
   // 사용자가 방금 한 행동(목표 변경 등)을 router.refresh() 응답을 기다리지 않고
@@ -85,6 +86,35 @@ export function Dashboard({
   const tKey = todayKey(today);
 
   const todayLogsCount = countUniquePeople(logsByDate.get(tKey) ?? []);
+
+  // 앱(PWA)을 나갔다가 다시 들어올 때, 브라우저가 서버에 새로 요청하지 않고
+  // 백-포워드 캐시(bfcache)에 저장해둔 예전 화면을 그대로 복원하는 경우가 있다.
+  // 그 상태에서는 이 페이지의 props가 나갈 당시(예: 아직 아무도 인증하지 않았을 때)의
+  // 값 그대로라서 "인증한 사람이 없어요"로 잘못 보인다. bfcache 복원 시점과
+  // 화면이 다시 보이는 시점을 감지해서 최신 데이터를 다시 받아온다.
+  useEffect(() => {
+    let lastRefresh = Date.now();
+    const MIN_INTERVAL_MS = 5000;
+
+    function refreshThrottled() {
+      const now = Date.now();
+      if (now - lastRefresh < MIN_INTERVAL_MS) return;
+      lastRefresh = now;
+      router.refresh();
+    }
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) refreshThrottled();
+    }
+    function handleVisibility() {
+      if (document.visibilityState === "visible") refreshThrottled();
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [router]);
 
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-background pb-28">
@@ -125,9 +155,12 @@ export function Dashboard({
       </main>
 
       <button
-        onClick={() => setShowUpload(true)}
+        onClick={() => {
+          setUploadDateKey(tKey);
+          setShowUpload(true);
+        }}
         className="safe-bottom fixed bottom-6 right-5 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-black/25 transition active:scale-95"
-        aria-label="오늘 운동 인증하기"
+        aria-label="운동 인증하기"
       >
         <Plus size={28} />
       </button>
@@ -140,6 +173,7 @@ export function Dashboard({
           onClose={() => setSelectedKey(null)}
           isToday={selectedKey === tKey}
           onUploadClick={() => {
+            setUploadDateKey(selectedKey);
             setSelectedKey(null);
             setShowUpload(true);
           }}
@@ -175,22 +209,26 @@ export function Dashboard({
       {showUpload && (
         <UploadSheet
           userId={userId}
+          initialDateKey={uploadDateKey ?? tKey}
           onClose={() => setShowUpload(false)}
-          onUploaded={() => {
-            // 업로드 즉시 "오늘 달성 +1"로 가정하고 먼저 반영, 서버 새로고침으로 뒤이어 확정
-            setProgressOverride(
-              weeklyProgress.map((p) => {
-                if (p.profile.id !== userId) return p;
-                const achievedDays = p.achievedDays + 1;
-                return {
-                  ...p,
-                  achievedDays,
-                  status: computeWeeklyStatus(achievedDays, p.targetDays, p.remainingDaysInWeek),
-                };
-              })
-            );
+          onUploaded={(uploadedDateKey) => {
+            // 업로드한 날짜가 "오늘"일 때만 이번 주 달성 현황에 즉시 +1로 낙관적 반영한다.
+            // 과거 날짜는 이번 주 범위가 아닐 수도 있어 서버 새로고침 결과를 그대로 신뢰한다.
+            if (uploadedDateKey === tKey) {
+              setProgressOverride(
+                weeklyProgress.map((p) => {
+                  if (p.profile.id !== userId) return p;
+                  const achievedDays = p.achievedDays + 1;
+                  return {
+                    ...p,
+                    achievedDays,
+                    status: computeWeeklyStatus(achievedDays, p.targetDays, p.remainingDaysInWeek),
+                  };
+                })
+              );
+            }
             setShowUpload(false);
-            setSelectedKey(tKey);
+            setSelectedKey(uploadedDateKey);
             router.refresh();
           }}
         />
