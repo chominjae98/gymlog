@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Copy, Receipt, X } from "lucide-react";
+import { Receipt, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatMonthTitle, nowInSeoul } from "@/lib/date";
 import { getMonthlySettlement } from "@/lib/settlement-data";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
-import { useToast } from "@/components/ToastProvider";
 import type { MonthlySettlement } from "@/types/database";
 
 type Props = {
@@ -20,7 +19,6 @@ type Props = {
 export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
-  const showToast = useToast();
   const [settlement, setSettlement] = useState<MonthlySettlement[] | null>(null);
 
   useEffect(() => {
@@ -38,19 +36,6 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
     ? [...settlement].sort((a, b) => b.totalFine - a.totalFine)
     : [];
   const totalPot = sorted.reduce((sum, s) => sum + s.totalFine, 0);
-
-  function copySummary() {
-    const title = `${formatMonthTitle(monthDate)} 정산 요약`;
-    const lines = sorted.map(
-      (s) => `${s.profile.nickname}: ${s.totalFine.toLocaleString()}원`
-    );
-    const text = [title, ...lines, `총액: ${totalPot.toLocaleString()}원`].join("\n");
-
-    navigator.clipboard
-      .writeText(text)
-      .then(() => showToast("정산 요약을 복사했어요. 채팅방에 붙여넣어 보세요!"))
-      .catch(() => showToast("복사에 실패했어요.", "error"));
-  }
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
@@ -74,9 +59,6 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
               <X size={18} />
             </button>
           </div>
-          <p className="mt-1 text-[12px] text-muted">
-            실제 송금은 앱이 대신하지 않아요. 요약을 복사해서 채팅방에 공유해보세요.
-          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4">
@@ -108,9 +90,6 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
                     <p className="truncate text-[14px] font-semibold text-foreground">
                       {s.profile.nickname}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-muted">
-                      {s.weeks.filter((w) => w.status === "fined").length}주 벌금 확정
-                    </p>
                   </div>
                   <span
                     className={[
@@ -128,17 +107,10 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
 
         {sorted.length > 0 && (
           <div className="shrink-0 border-t border-border px-5 py-4">
-            <div className="mb-3 flex items-center justify-between text-[13px]">
+            <div className="flex items-center justify-between text-[13px]">
               <span className="font-medium text-muted">이 달 총액</span>
               <span className="font-bold text-foreground">{totalPot.toLocaleString()}원</span>
             </div>
-            <button
-              onClick={copySummary}
-              className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-brand py-3.5 text-[14px] font-semibold text-white active:scale-[0.98]"
-            >
-              <Copy size={15} />
-              요약 복사하기
-            </button>
           </div>
         )}
       </div>

@@ -102,11 +102,15 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
                       }`
                     : "칸을 눌러 날짜를 확인해보세요"}
                 </p>
-                <div className="flex items-center justify-end gap-1.5 text-[10px] text-muted">
-                  적음
-                  <span className="h-[11px] w-[11px] rounded-[3px] bg-surface-muted" />
-                  <span className="h-[11px] w-[11px] rounded-[3px] bg-brand" />
-                  많음
+                <div className="flex items-center justify-end gap-3 text-[10px] text-muted">
+                  <span className="flex items-center gap-1">
+                    <span className="h-[11px] w-[11px] rounded-[3px] bg-surface-muted" />
+                    인증 안 함
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-[11px] w-[11px] rounded-[3px] bg-brand" />
+                    인증함
+                  </span>
                 </div>
               </div>
             </div>
