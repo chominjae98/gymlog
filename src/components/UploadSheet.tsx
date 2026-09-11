@@ -8,6 +8,7 @@ import { formatDayTitle, nowInSeoul, toDateKey } from "@/lib/date";
 import { groupLogsByDate } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
 import { uploadWorkoutPhotos } from "@/lib/storage-upload";
+import { resizeImagesForUpload } from "@/lib/image-resize";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -57,14 +58,18 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
     };
   }, [calendarMonth]);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
     if (picked.length === 0) return;
     const room = MAX_PHOTOS - files.length;
     const accepted = picked.slice(0, room);
-    setFiles((prev) => [...prev, ...accepted]);
-    setPreviews((prev) => [...prev, ...accepted.map((f) => URL.createObjectURL(f))]);
     e.target.value = ""; // 같은 파일 다시 선택 가능하도록
+
+    // 원본 그대로 미리보기/업로드하면 카메라 원본(수천 px, 수 MB)을 여러 장 한 번에
+    // 디코딩하게 되어 화면이 잠깐 검게 깨지는 현상이 있었다. 화면에 보일 크기로 먼저 줄인다.
+    const resized = await resizeImagesForUpload(accepted);
+    setFiles((prev) => [...prev, ...resized]);
+    setPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
   }
 
   function removePhoto(index: number) {

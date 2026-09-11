@@ -255,13 +255,11 @@ export function Dashboard({
               );
             }
 
+            // "+" 버튼으로 업로드했을 때는 업로드 시트만 닫고 홈 화면으로 돌아간다
+            // (토스트로 완료만 알려주면 충분 — 굳이 그날 기록 화면을 다시 열 필요는 없음).
+            // 드로어를 이미 보고 있던 상태에서 그 안에서 업로드한 경우엔 드로어를 닫지 않았으므로
+            // (onUploadClick 참고) 그대로 유지된다.
             setShowUpload(false);
-            if (selectedKey !== uploadedDateKey) {
-              // 드로어가 이미 이 날짜로 열려 있던 경우(드로어 안에서 업로드)는 그대로 두고,
-              // "+" 버튼으로 새로 업로드한 경우에만 드로어를 새로 연다. 업로드 시트가 닫히는 것과
-              // 드로어가 뜨는 게 같은 프레임에 겹치면 화면이 깜빡이므로 한 틱 늦춰서 연다.
-              window.setTimeout(() => setSelectedKey(uploadedDateKey), 80);
-            }
             router.refresh();
           }}
         />

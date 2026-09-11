@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
+import { resizeImagesForUpload } from "@/lib/image-resize";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -35,14 +36,16 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
 
   const totalCount = keptUrls.length + newFiles.length;
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
     if (picked.length === 0) return;
     const room = MAX_PHOTOS - totalCount;
     const accepted = picked.slice(0, room);
-    setNewFiles((prev) => [...prev, ...accepted]);
-    setNewPreviews((prev) => [...prev, ...accepted.map((f) => URL.createObjectURL(f))]);
     e.target.value = "";
+
+    const resized = await resizeImagesForUpload(accepted);
+    setNewFiles((prev) => [...prev, ...resized]);
+    setNewPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
   }
 
   function removeKept(url: string) {
