@@ -30,7 +30,9 @@ export function HeatmapView({
   }, [weeks]);
 
   return (
-    <div ref={scrollRef} className="overflow-x-auto overscroll-contain pb-1">
+    <div ref={scrollRef} className="overflow-x-auto overscroll-contain px-2 pb-1">
+      {/* 선택된 칸의 ring(box-shadow)이 셀 경계 밖으로 그려지므로, 스크롤 맨 끝(첫/마지막 열)에서도
+          잘리지 않도록 스크롤 컨테이너 자체에 좌우 padding을 둔다. */}
       <div className="inline-flex gap-[4px]">
         <div className="flex flex-col gap-[4px] pr-1.5 pt-[22px]">
           {WEEKDAY_LABELS.map((label, i) => (

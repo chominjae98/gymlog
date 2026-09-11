@@ -15,6 +15,17 @@ const nextConfig: NextConfig = {
   // 옮길 일이 생기면 그때 다시 추가하면 됨.
   // 개발 모드 좌하단 Next.js Dev Tools 아이콘 숨김
   devIndicators: false,
+  // 홈 화면은 로그인 사용자별 실시간 집계(벌금 위기 등)를 담은 동적 페이지라
+  // 브라우저/웹뷰의 HTTP 캐시에 남아있으면 안 된다. 캐시된 응답이 재사용되면
+  // 앱을 강제종료 후 재실행했을 때 예전 데이터가 그대로 보이는 문제가 생긴다.
+  async headers() {
+    return [
+      {
+        source: "/",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

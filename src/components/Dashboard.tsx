@@ -105,11 +105,16 @@ export function Dashboard({
 
   const todayLogsCount = countUniquePeople(logsByDate.get(tKey) ?? []);
 
-  // 앱(PWA)을 나갔다가 다시 들어올 때, 브라우저가 서버에 새로 요청하지 않고
-  // 백-포워드 캐시(bfcache)에 저장해둔 예전 화면을 그대로 복원하는 경우가 있다.
-  // 그 상태에서는 이 페이지의 props가 나갈 당시(예: 아직 아무도 인증하지 않았을 때)의
-  // 값 그대로라서 "인증한 사람이 없어요"로 잘못 보인다. bfcache 복원 시점과
-  // 화면이 다시 보이는 시점을 감지해서 최신 데이터를 다시 받아온다.
+  // 앱(웹뷰로 감싼 PWA 형태)을 강제종료했다가 다시 열면, OS/웹뷰가 이전 화면을
+  // 네트워크 요청 없이 그대로(bfcache 또는 그에 준하는 캐시) 복원하는 경우가 있다.
+  // 그 상태에서는 이 페이지의 props가 앱을 나갈 당시(예: 아직 아무도 인증하지 않았을 때)의
+  // 값 그대로라서 "인증한 사람이 없어요"로 잘못 보인다.
+  //
+  // 웹뷰마다 e.persisted 플래그를 신뢰할 수 없게 보고하는 경우가 있어(항상 false로
+  // 오보하거나, 리스너가 붙기도 전에 이벤트가 지나가버리는 경우 등) persisted 여부로
+  // 분기하지 않고, pageshow/포그라운드 전환 시점마다 무조건 새로고침을 시도한다.
+  // MIN_INTERVAL_MS로 스로틀되어 있어 정상적인 최초 로드 직후에는 실질적으로
+  // 추가 요청이 발생하지 않는다.
   useEffect(() => {
     let lastRefresh = Date.now();
     const MIN_INTERVAL_MS = 5000;
@@ -120,8 +125,8 @@ export function Dashboard({
       lastRefresh = now;
       router.refresh();
     }
-    function handlePageShow(e: PageTransitionEvent) {
-      if (e.persisted) refreshThrottled();
+    function handlePageShow() {
+      refreshThrottled();
     }
     function handleVisibility() {
       if (document.visibilityState === "visible") refreshThrottled();
