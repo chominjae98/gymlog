@@ -70,6 +70,7 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
     const resized = await resizeImagesForUpload(accepted);
     setFiles((prev) => [...prev, ...resized]);
     setPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
+    setError(null); // "사진을 먼저 선택해 주세요" 등 이전 에러가 사진을 고른 뒤에도 남아있지 않도록
   }
 
   function removePhoto(index: number) {

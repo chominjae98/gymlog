@@ -46,6 +46,7 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
     const resized = await resizeImagesForUpload(accepted);
     setNewFiles((prev) => [...prev, ...resized]);
     setNewPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
+    setError(null);
   }
 
   function removeKept(url: string) {
