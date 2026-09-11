@@ -30,36 +30,50 @@ export async function getMonthlySettlement(
     return todayKey >= start && todayKey <= end;
   });
 
-  const [{ data: profiles }, { data: goals }, { data: logs }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, nickname, avatar_url")
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("weekly_goals")
-      .select("user_id, week_start, target_days")
-      .in("week_start", weekStarts),
-    supabase
-      .from("workout_logs")
-      .select("user_id, log_date")
-      .gte("log_date", monthStart)
-      .lte("log_date", monthEnd),
-  ]);
+  const [{ data: profiles }, { data: goals }, { data: logs }, { data: exceptions }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, nickname, avatar_url")
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("weekly_goals")
+        .select("user_id, week_start, target_days")
+        .in("week_start", weekStarts),
+      supabase
+        .from("workout_logs")
+        .select("user_id, log_date")
+        .gte("log_date", monthStart)
+        .lte("log_date", monthEnd),
+      supabase
+        .from("fine_exceptions")
+        .select("user_id, week_start")
+        .in("week_start", weekStarts)
+        .eq("status", "approved"),
+    ]);
 
   const goalByUserWeek = new Map<string, number>();
   for (const g of goals ?? []) {
     goalByUserWeek.set(`${g.user_id}__${g.week_start}`, g.target_days);
   }
 
+  // 다수결로 가결된 벌금 예외 사유서는 실제 인증 없이도 그 주 달성일수에 +1로 카운트된다.
+  const exceptionCreditByUserWeek = new Map<string, number>();
+  for (const ex of exceptions ?? []) {
+    const key = `${ex.user_id}__${ex.week_start}`;
+    exceptionCreditByUserWeek.set(key, (exceptionCreditByUserWeek.get(key) ?? 0) + 1);
+  }
+
   return (profiles ?? []).map((profile) => {
     const weeks = weekStarts.map((weekStart) => {
       const { start, end } = getWeekRangeFromStart(weekStart);
       const targetDays = goalByUserWeek.get(`${profile.id}__${weekStart}`) ?? null;
-      const achievedDays = new Set(
-        (logs ?? [])
-          .filter((l) => l.user_id === profile.id && l.log_date >= start && l.log_date <= end)
-          .map((l) => l.log_date)
-      ).size;
+      const achievedDays =
+        new Set(
+          (logs ?? [])
+            .filter((l) => l.user_id === profile.id && l.log_date >= start && l.log_date <= end)
+            .map((l) => l.log_date)
+        ).size + (exceptionCreditByUserWeek.get(`${profile.id}__${weekStart}`) ?? 0);
 
       const isCurrentWeek = weekStart === currentWeekStart;
       const isFutureWeek = weekStart > todayKey;

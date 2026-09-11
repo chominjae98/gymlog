@@ -9,6 +9,8 @@ import { groupLogsByDate } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
 import { uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { resizeImagesForUpload } from "@/lib/image-resize";
+import { hashFiles } from "@/lib/photo-hash";
+import { getExistingPhotoHashes } from "@/lib/duplicate-check";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -31,10 +33,25 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
   const showToast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [fileHashes, setFileHashes] = useState<string[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [memo, setMemo] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 이 사람이 과거에 이미 올린 사진과 내용이 같은 사진(재사용)을 막기 위해,
+  // 시트가 열리자마자 그 사람의 기존 사진 해시 목록을 미리 받아둔다.
+  const [existingHashes, setExistingHashes] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    getExistingPhotoHashes(supabase, userId).then((hashes) => {
+      if (!cancelled) setExistingHashes(hashes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const today = nowInSeoul();
   const initialDate = new Date(`${initialDateKey}T00:00:00`);
@@ -68,15 +85,40 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
     // 원본 그대로 미리보기/업로드하면 카메라 원본(수천 px, 수 MB)을 여러 장 한 번에
     // 디코딩하게 되어 화면이 잠깐 검게 깨지는 현상이 있었다. 화면에 보일 크기로 먼저 줄인다.
     const resized = await resizeImagesForUpload(accepted);
-    setFiles((prev) => [...prev, ...resized]);
-    setPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
+    const hashes = await hashFiles(resized);
+
+    // 이미 올린 적 있는 사진(과거 기록 또는 이번에 이미 고른 사진)과 내용이 같으면
+    // 조용히 걸러내고, 몇 장을 걸렀는지만 알려준다.
+    const seen = new Set([...existingHashes, ...fileHashes]);
+    const uniqueFiles: File[] = [];
+    const uniqueHashes: string[] = [];
+    let duplicateCount = 0;
+    resized.forEach((file, i) => {
+      const hash = hashes[i];
+      if (seen.has(hash)) {
+        duplicateCount += 1;
+        return;
+      }
+      seen.add(hash);
+      uniqueFiles.push(file);
+      uniqueHashes.push(hash);
+    });
+
+    setFiles((prev) => [...prev, ...uniqueFiles]);
+    setFileHashes((prev) => [...prev, ...uniqueHashes]);
+    setPreviews((prev) => [...prev, ...uniqueFiles.map((f) => URL.createObjectURL(f))]);
     // "사진을 먼저 선택해 주세요" 등 이전 에러가 사진을 고른 뒤에도 남아있지 않도록,
-    // 단 이번에 방 부족으로 일부가 잘렸다면 그 사실을 대신 알려준다.
-    setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
+    // 단 이번에 방 부족/중복으로 일부가 걸러졌다면 그 사실을 대신 알려준다.
+    if (duplicateCount > 0) {
+      setError(`이미 올렸던 사진과 같은 사진 ${duplicateCount}장은 제외했어요.`);
+    } else {
+      setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
+    }
   }
 
   function removePhoto(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFileHashes((prev) => prev.filter((_, i) => i !== index));
     setPreviews((prev) => {
       URL.revokeObjectURL(prev[index]);
       return prev.filter((_, i) => i !== index);
@@ -124,6 +166,7 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
       user_id: userId,
       log_date: selectedDateKey,
       photo_urls: photoUrls,
+      photo_hashes: fileHashes,
       memo: memo.trim() || null,
     });
 

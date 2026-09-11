@@ -6,6 +6,8 @@ import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { resizeImagesForUpload } from "@/lib/image-resize";
+import { hashFiles } from "@/lib/photo-hash";
+import { getExistingPhotoHashes } from "@/lib/duplicate-check";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -25,16 +27,34 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
   useCloseOnBackButton(onClose);
   const showToast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
-  // 기존에 올라가 있던 사진 (남겨둘 것만 유지)
-  const [keptUrls, setKeptUrls] = useState<string[]>(log.photo_urls);
+  // 기존에 올라가 있던 사진 (남겨둘 것만 유지). url/hash를 짝지어 들고 있어야
+  // 사진을 지워도 서로 다른 사진의 hash가 밀려서 어긋나지 않는다.
+  const [keptPhotos, setKeptPhotos] = useState(
+    log.photo_urls.map((url, i) => ({ url, hash: log.photo_hashes?.[i] ?? "" }))
+  );
   // 이번에 새로 추가한 파일
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newHashes, setNewHashes] = useState<string[]>([]);
   const [newPreviews, setNewPreviews] = useState<string[]>([]);
   const [memo, setMemo] = useState(log.memo ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalCount = keptUrls.length + newFiles.length;
+  const totalCount = keptPhotos.length + newFiles.length;
+
+  // 이 게시물 자신은 제외하고, 이 사람이 과거에 올린 다른 사진과 내용이 같은
+  // 사진(재사용)을 새로 추가하는 것만 막는다.
+  const [existingHashes, setExistingHashes] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    getExistingPhotoHashes(supabase, log.user_id, log.id).then((hashes) => {
+      if (!cancelled) setExistingHashes(hashes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [log.user_id, log.id]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -44,17 +64,44 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
     e.target.value = "";
 
     const resized = await resizeImagesForUpload(accepted);
-    setNewFiles((prev) => [...prev, ...resized]);
-    setNewPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
-    setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
+    const hashes = await hashFiles(resized);
+
+    const seen = new Set([
+      ...existingHashes,
+      ...keptPhotos.map((p) => p.hash),
+      ...newHashes,
+    ]);
+    const uniqueFiles: File[] = [];
+    const uniqueHashes: string[] = [];
+    let duplicateCount = 0;
+    resized.forEach((file, i) => {
+      const hash = hashes[i];
+      if (hash && seen.has(hash)) {
+        duplicateCount += 1;
+        return;
+      }
+      seen.add(hash);
+      uniqueFiles.push(file);
+      uniqueHashes.push(hash);
+    });
+
+    setNewFiles((prev) => [...prev, ...uniqueFiles]);
+    setNewHashes((prev) => [...prev, ...uniqueHashes]);
+    setNewPreviews((prev) => [...prev, ...uniqueFiles.map((f) => URL.createObjectURL(f))]);
+    if (duplicateCount > 0) {
+      setError(`이미 올렸던 사진과 같은 사진 ${duplicateCount}장은 제외했어요.`);
+    } else {
+      setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
+    }
   }
 
   function removeKept(url: string) {
-    setKeptUrls((prev) => prev.filter((u) => u !== url));
+    setKeptPhotos((prev) => prev.filter((p) => p.url !== url));
   }
 
   function removeNew(index: number) {
     setNewFiles((prev) => prev.filter((_, i) => i !== index));
+    setNewHashes((prev) => prev.filter((_, i) => i !== index));
     setNewPreviews((prev) => {
       URL.revokeObjectURL(prev[index]);
       return prev.filter((_, i) => i !== index);
@@ -90,11 +137,16 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
       return;
     }
 
-    const finalPhotoUrls = [...keptUrls, ...uploadedUrls];
+    const finalPhotoUrls = [...keptPhotos.map((p) => p.url), ...uploadedUrls];
+    const finalPhotoHashes = [...keptPhotos.map((p) => p.hash), ...newHashes];
 
     const { error: updateError } = await supabase
       .from("workout_logs")
-      .update({ photo_urls: finalPhotoUrls, memo: memo.trim() || null })
+      .update({
+        photo_urls: finalPhotoUrls,
+        photo_hashes: finalPhotoHashes,
+        memo: memo.trim() || null,
+      })
       .eq("id", log.id);
 
     setSaving(false);
@@ -104,6 +156,7 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
     }
 
     // 화면에서 뺀(더 이상 안 쓰는) 기존 사진 파일 정리 (best-effort)
+    const keptUrls = keptPhotos.map((p) => p.url);
     const removedUrls = log.photo_urls.filter((u) => !keptUrls.includes(u));
     await removeWorkoutPhotos(supabase, removedUrls);
 
@@ -144,7 +197,7 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
         />
 
         <div className="grid grid-cols-3 gap-2">
-          {keptUrls.map((url) => (
+          {keptPhotos.map(({ url }) => (
             <div key={url} className="relative aspect-square overflow-hidden rounded-2xl bg-surface-muted">
               <Image src={url} alt="기존 사진" fill className="object-cover" />
               <button

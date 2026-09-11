@@ -29,7 +29,7 @@ export async function getMonthLogs(supabase: Client, monthDate: Date) {
   const { data } = await supabase
     .from("workout_logs")
     .select(
-      "id, user_id, log_date, photo_urls, memo, created_at, profile:profiles(id, nickname, avatar_url)"
+      "id, user_id, log_date, photo_urls, photo_hashes, memo, created_at, profile:profiles(id, nickname, avatar_url)"
     )
     .gte("log_date", start)
     .lte("log_date", end)
@@ -105,7 +105,7 @@ export async function getWeeklyProgress(
   const { start, end } = getWeekRangeKeys(today);
   const remaining = remainingDaysInWeekIncludingToday(today);
 
-  const [{ data: profiles }, { data: goals }, { data: logs }] =
+  const [{ data: profiles }, { data: goals }, { data: logs }, { data: exceptions }] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -120,6 +120,11 @@ export async function getWeeklyProgress(
         .select("user_id, log_date")
         .gte("log_date", start)
         .lte("log_date", end),
+      supabase
+        .from("fine_exceptions")
+        .select("user_id")
+        .eq("week_start", weekStart)
+        .eq("status", "approved"),
     ]);
 
   const goalByUser = new Map(
@@ -131,10 +136,20 @@ export async function getWeeklyProgress(
     set.add(log.log_date);
     achievedByUser.set(log.user_id, set);
   }
+  // 다수결로 가결된 벌금 예외 사유서는 실제 인증 없이도 그 주 달성일수에 +1로 카운트된다.
+  const exceptionCreditByUser = new Map<string, number>();
+  for (const ex of exceptions ?? []) {
+    exceptionCreditByUser.set(
+      ex.user_id,
+      (exceptionCreditByUser.get(ex.user_id) ?? 0) + 1
+    );
+  }
 
   return (profiles ?? []).map((profile) => {
     const targetDays = goalByUser.get(profile.id) ?? null;
-    const achievedDays = achievedByUser.get(profile.id)?.size ?? 0;
+    const achievedDays =
+      (achievedByUser.get(profile.id)?.size ?? 0) +
+      (exceptionCreditByUser.get(profile.id) ?? 0);
 
     return {
       profile,

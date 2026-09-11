@@ -8,6 +8,8 @@ import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
 import { FineSection } from "@/components/FineSection";
 import { FineWatchlist } from "@/components/FineWatchlist";
+import { FineExceptionPanel } from "@/components/FineExceptionPanel";
+import { ExceptionRequestSheet } from "@/components/ExceptionRequestSheet";
 import { WeeklyGoalSheet } from "@/components/WeeklyGoalSheet";
 import { UploadSheet } from "@/components/UploadSheet";
 import { HeatmapSheet } from "@/components/HeatmapSheet";
@@ -20,7 +22,12 @@ import {
 } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
 import { formatMonthTitle, isSameMonthGuard, nowInSeoul } from "@/lib/date";
-import type { Profile, WeeklyProgress, WorkoutLogWithProfile } from "@/types/database";
+import type {
+  FineExceptionWithVotes,
+  Profile,
+  WeeklyProgress,
+  WorkoutLogWithProfile,
+} from "@/types/database";
 
 type Props = {
   userId: string;
@@ -29,6 +36,8 @@ type Props = {
   initialWeeklyProgress: WeeklyProgress[];
   initialMyGoal: number | null;
   weeklyFine: number;
+  weekStart: string;
+  initialExceptions: FineExceptionWithVotes[];
 };
 
 export function Dashboard({
@@ -38,6 +47,8 @@ export function Dashboard({
   initialWeeklyProgress,
   initialMyGoal,
   weeklyFine,
+  weekStart,
+  initialExceptions,
 }: Props) {
   const router = useRouter();
   const today = nowInSeoul();
@@ -52,6 +63,7 @@ export function Dashboard({
   const [uploadDateKey, setUploadDateKey] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
+  const [showExceptionRequest, setShowExceptionRequest] = useState(false);
 
   // 서버가 새로 내려준 값(props)을 기본값 삼아 로컬 상태로 들고 있다가,
   // 사용자가 방금 한 행동(목표 변경 등)을 router.refresh() 응답을 기다리지 않고
@@ -191,6 +203,15 @@ export function Dashboard({
 
         <FineWatchlist progress={weeklyProgress} weeklyFine={weeklyFine} />
 
+        <FineExceptionPanel
+          exceptions={initialExceptions}
+          currentUserId={userId}
+          totalMembers={weeklyProgress.length}
+          myStatus={weeklyProgress.find((p) => p.profile.id === userId)?.status}
+          onRequestClick={() => setShowExceptionRequest(true)}
+          onMutated={() => router.refresh()}
+        />
+
         <CalendarGrid
           monthDate={monthDate}
           onMonthChange={handleMonthChange}
@@ -268,6 +289,7 @@ export function Dashboard({
               user_id: userId,
               log_date: uploadedDateKey,
               photo_urls: photoUrls,
+              photo_hashes: [],
               memo,
               created_at: new Date().toISOString(),
               profile: { id: userId, nickname: profile.nickname, avatar_url: profile.avatar_url },
@@ -299,6 +321,18 @@ export function Dashboard({
             // 드로어를 이미 보고 있던 상태에서 그 안에서 업로드한 경우엔 드로어를 닫지 않았으므로
             // (onUploadClick 참고) 그대로 유지된다.
             setShowUpload(false);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {showExceptionRequest && (
+        <ExceptionRequestSheet
+          userId={userId}
+          weekStart={weekStart}
+          onClose={() => setShowExceptionRequest(false)}
+          onSubmitted={() => {
+            setShowExceptionRequest(false);
             router.refresh();
           }}
         />

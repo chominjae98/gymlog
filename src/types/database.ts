@@ -20,6 +20,7 @@ export type WorkoutLog = {
   user_id: string;
   log_date: string; // YYYY-MM-DD
   photo_urls: string[]; // 사진 여러 장 첨부 가능, 최소 1장
+  photo_hashes: string[]; // photo_urls와 같은 순서 - 동일 사진 재업로드 방지용 SHA-256 해시
   memo: string | null;
   created_at: string;
 };
@@ -34,6 +35,24 @@ export type WorkoutLogComment = {
   log_id: string;
   user_id: string;
   body: string;
+  created_at: string;
+};
+
+export type FineException = {
+  id: string;
+  user_id: string;
+  week_start: string; // YYYY-MM-DD, 그 주의 월요일
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  resolved_at: string | null;
+};
+
+export type FineExceptionVote = {
+  id: string;
+  exception_id: string;
+  voter_id: string;
+  vote: "approve" | "reject";
   created_at: string;
 };
 
@@ -81,6 +100,26 @@ export type Database = {
         Update: Partial<WorkoutLogComment>;
         Relationships: [];
       };
+      fine_exceptions: {
+        Row: FineException;
+        Insert: Partial<FineException> & {
+          user_id: string;
+          week_start: string;
+          reason: string;
+        };
+        Update: Partial<FineException>;
+        Relationships: [];
+      };
+      fine_exception_votes: {
+        Row: FineExceptionVote;
+        Insert: Partial<FineExceptionVote> & {
+          exception_id: string;
+          voter_id: string;
+          vote: "approve" | "reject";
+        };
+        Update: Partial<FineExceptionVote>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -122,4 +161,10 @@ export type MonthlySettlement = {
   profile: Pick<Profile, "id" | "nickname" | "avatar_url">;
   totalFine: number;
   weeks: WeeklySettlementEntry[];
+};
+
+/** 화면에서 쓰는, 신청자 정보와 투표 목록이 join 된 벌금 예외 사유서 */
+export type FineExceptionWithVotes = FineException & {
+  profile: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  votes: FineExceptionVote[];
 };
