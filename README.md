@@ -15,10 +15,10 @@
 
 1. [supabase.com](https://supabase.com) 에서 새 프로젝트 생성 (Region은 `Northeast Asia (Seoul)` 권장)
 2. **SQL Editor** 에서 [`supabase/schema.sql`](supabase/schema.sql) 내용을 그대로 실행
-   - `profiles`, `weekly_goals`, `workout_logs`, `app_settings`, `workout_log_reactions`, `workout_log_comments`, `push_subscriptions` 테이블 생성
+   - `profiles`, `weekly_goals`, `workout_logs`, `app_settings`, `workout_log_reactions`, `workout_log_comments` 테이블 생성
    - RLS 정책 (친구들끼리는 서로 조회 가능, 내 데이터만 수정/삭제 가능)
    - `workout-photos` 공개 Storage 버킷 자동 생성
-   - ⚠️ 이미 예전 버전을 실행해서 운영 중인 프로젝트라면, 리액션/댓글/알림 기능을 쓰기 위해 **`schema.sql` 전체를 다시 한 번 SQL Editor에서 그대로 실행**해주세요. 모든 문장이 재실행 가능(idempotent)하게 되어 있어(`create table if not exists`, 정책은 `drop policy if exists` 후 재생성) 기존 데이터나 정책을 깨뜨리지 않고 새 테이블/정책만 추가됩니다.
+   - ⚠️ 이미 예전 버전을 실행해서 운영 중인 프로젝트라면, 리액션/댓글 기능을 쓰기 위해 **`schema.sql` 전체를 다시 한 번 SQL Editor에서 그대로 실행**해주세요. 모든 문장이 재실행 가능(idempotent)하게 되어 있어(`create table if not exists`, 정책은 `drop policy if exists` 후 재생성) 기존 데이터나 정책을 깨뜨리지 않고 새 테이블/정책만 추가됩니다. (한때 있었던 알림 리마인더용 `push_subscriptions` 테이블은 이 실행으로 자동 정리됩니다.)
 3. **Authentication → URL Configuration**
    - Site URL: 배포 도메인 (Vercel 배포 주소)
    - Redirect URLs 에 `http://localhost:3000/auth/callback` 과 실제 배포 주소의 `/auth/callback` 추가
@@ -46,12 +46,8 @@ cp .env.local.example .env.local
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project Settings → API → Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Project Settings → API → anon public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Project Settings → API → service_role key. **알림 리마인더 크론에서만** 서버에서 사용 (절대 브라우저에 노출 금지) |
-| `CRON_SECRET` | `/api/cron/reminder` 를 아무나 못 부르게 막는 임의의 긴 문자열 (`openssl rand -hex 32`) |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | 웹 푸시 키. `npx web-push generate-vapid-keys` 로 한 번만 생성해서 그대로 사용 |
-| `VAPID_SUBJECT` | 푸시 서비스가 문제 있을 때 연락할 `mailto:` 주소 |
 
-값을 채우기 전에는 홈 화면에 "Supabase 연결이 필요해요" 안내만 표시됩니다. 알림 리마인더 관련 값(`SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `VAPID_*`)이 없어도 나머지 기능(달력, 인증, 정산, 히트맵)은 정상 동작하고, 알림만 못 켜요.
+값을 채우기 전에는 홈 화면에 "Supabase 연결이 필요해요" 안내만 표시됩니다.
 
 ## 4. 로컬 실행
 
@@ -76,7 +72,6 @@ npm run dev
 - **이 달 정산 요약**: "이번 주 현황" 카드의 "이 달 정산" 버튼 → 이번 달에 걸친 모든 주를 다시 계산해서 사람별 누적 벌금 합계를 보여줌. 실제 송금 기능은 없고, "요약 복사하기"로 텍스트를 만들어 채팅방에 붙여넣는 용도.
 - **댓글 · 리액션**: 날짜를 눌러 연 게시물마다 이모지 리액션(🔥👏💪😂, 1인 1개, 다시 누르면 취소/교체)과 댓글을 남길 수 있음. 본인 댓글만 삭제 가능.
 - **내 활동 히트맵**: 헤더의 불꽃 아이콘 → 최근 약 5개월 인증 기록을 GitHub 잔디밭처럼 시각화, 현재 연속 일수 / 최장 연속 일수 / 총 인증 일수 표시.
-- **알림 리마인더 (웹 푸시)**: 헤더 메뉴(⋯) → "알림 받기"로 브라우저 알림 권한 요청 후 이 기기를 구독시킴. 매일 저녁(기본 21:00 KST) Vercel Cron이 `/api/cron/reminder`를 호출해서, 그 시각까지 아직 인증하지 않은 사람에게만 리마인더 푸시를 보냄. 아래 "웹 푸시 알림 배포" 절 참고.
 
 ## 6. Vercel 배포
 
@@ -95,16 +90,6 @@ vercel            # 질문에 답하면서 프로젝트 생성 (프로젝트 이
 ```bash
 vercel env add NEXT_PUBLIC_SUPABASE_URL production
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
-```
-
-알림 리마인더까지 쓰려면 아래 값도 등록하세요 (자세한 값은 "3. 환경 변수" 표 참고).
-
-```bash
-vercel env add SUPABASE_SERVICE_ROLE_KEY production
-vercel env add CRON_SECRET production
-vercel env add NEXT_PUBLIC_VAPID_PUBLIC_KEY production
-vercel env add VAPID_PRIVATE_KEY production
-vercel env add VAPID_SUBJECT production
 ```
 
 ### 6-3. 프로덕션 배포
@@ -129,37 +114,20 @@ vercel --prod
 
 Vercel 대시보드 → 프로젝트 → **Settings → Domains** 에서 보유한 도메인의 서브도메인(예: `gym.example.com`)을 추가하고 안내되는 DNS 레코드(CNAME)를 등록하면 됩니다. 필수는 아니고, Vercel이 기본으로 주는 `*.vercel.app` 주소도 영구적으로 유지됩니다.
 
-### 6-6. 웹 푸시 알림 배포
-
-1. **VAPID 키 생성 (최초 1회만)**
-   ```bash
-   npx web-push generate-vapid-keys
-   ```
-   출력된 Public/Private Key를 각각 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`에 등록하세요. 한 번 생성하면 계속 같은 값을 써야 합니다(바꾸면 기존에 구독한 사람들이 모두 다시 구독해야 함).
-2. **Supabase service role 키 확인**: Project Settings → API → `service_role` (anon key와 다름, 절대 `NEXT_PUBLIC_` 접두사 붙이지 말 것) → `SUPABASE_SERVICE_ROLE_KEY`에 등록.
-3. **크론 비밀값 생성**: `openssl rand -hex 32` 로 임의의 문자열을 만들어 `CRON_SECRET`에 등록. Vercel Cron이 이 값을 `Authorization: Bearer <값>` 헤더로 자동으로 실어 보내주므로 따로 설정할 것은 없습니다.
-4. 위 값들을 Vercel에 등록(6-2 참고)하고 `vercel --prod`로 재배포하면, [`vercel.json`](vercel.json)에 정의된 크론(`0 12 * * *` UTC = 매일 21:00 KST)이 자동으로 활성화됩니다. Vercel 대시보드 → 프로젝트 → **Settings → Cron Jobs** 에서 실행 이력을 확인할 수 있어요.
-5. 알림은 웹 푸시 표준 기능이라 iOS는 **Safari에서 홈 화면에 추가한 PWA에서만** 동작합니다(iOS 16.4+). 데스크톱/안드로이드 크롬은 브라우저 탭에서 바로 동작합니다.
-
 ## 폴더 구조 참고
 
 ```
 src/
-  app/
-    api/cron/reminder/  # 알림 리마인더 크론 라우트 (Vercel Cron이 매일 호출)
-    (/, /auth/callback)  # 그 외 라우트, PWA 아이콘/매니페스트
+  app/                # 라우트 (/, /auth/callback), PWA 아이콘/매니페스트
   components/         # 화면 컴포넌트 (달력, 시트, 벌금 리스트, 히트맵, 정산, 댓글/리액션 등)
   lib/
-    supabase/          # 서버/브라우저/미들웨어/서비스롤 Supabase 클라이언트
+    supabase/          # 서버/브라우저/미들웨어 Supabase 클라이언트
     dashboard-data.ts   # 서버에서 쓰는 데이터 조회 & 벌금 계산 로직
     settlement-data.ts   # 월간 정산 요약 계산
     social-data.ts        # 리액션/댓글 조회·작성
     heatmap-data.ts        # 히트맵 그리드 & 연속 일수 계산
-    push-client.ts          # 브라우저 알림 구독/해제
-    client-data.ts           # 브라우저에서 달력 이동 시 쓰는 재조회 로직
-    date.ts                   # 주/월 계산 유틸 (월요일 시작 기준)
+    client-data.ts          # 브라우저에서 달력 이동 시 쓰는 재조회 로직
+    date.ts                  # 주/월 계산 유틸 (월요일 시작 기준)
   types/database.ts    # Supabase 테이블 타입
-public/sw.js          # 웹 푸시 수신용 서비스워커
 supabase/schema.sql    # DB 스키마 + RLS + Storage 정책 SQL
-vercel.json            # 알림 리마인더 크론 스케줄
 ```

@@ -276,47 +276,7 @@ create policy "user can delete own comment"
   using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
--- 8. push_subscriptions : 웹 푸시 알림 구독 정보
---    브라우저(기기)당 하나. 같은 사람이 여러 기기에서 구독하면 여러 행이 생긴다.
+-- 8. (제거됨) 웹 푸시 알림 리마인더 기능을 뺐다. 예전 버전을 실행해서
+--    이미 push_subscriptions 테이블이 생성돼 있다면 이 문장이 정리해준다.
 -- ------------------------------------------------------------
-create table if not exists public.push_subscriptions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  endpoint text not null unique,
-  p256dh text not null,
-  auth_key text not null,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists push_subscriptions_user_idx on public.push_subscriptions (user_id);
-
-alter table public.push_subscriptions enable row level security;
-
--- 본인 구독 정보는 본인만 보고 관리한다 (다른 사람에게 노출될 이유가 없음).
--- 알림 발송(크론) 서버는 service role 키를 쓰므로 RLS 자체를 우회해서 전체를 조회한다.
-drop policy if exists "user can view own push subscriptions" on public.push_subscriptions;
-create policy "user can view own push subscriptions"
-  on public.push_subscriptions for select
-  to authenticated
-  using (auth.uid() = user_id);
-
-drop policy if exists "user can insert own push subscription" on public.push_subscriptions;
-create policy "user can insert own push subscription"
-  on public.push_subscriptions for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
--- endpoint가 unique라서 같은 기기에서 다시 구독(upsert)하면 INSERT ... ON CONFLICT DO UPDATE로
--- 처리된다. 이 update 정책이 없으면 그 upsert 자체가 RLS에 막혀 실패한다.
-drop policy if exists "user can update own push subscription" on public.push_subscriptions;
-create policy "user can update own push subscription"
-  on public.push_subscriptions for update
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-drop policy if exists "user can delete own push subscription" on public.push_subscriptions;
-create policy "user can delete own push subscription"
-  on public.push_subscriptions for delete
-  to authenticated
-  using (auth.uid() = user_id);
+drop table if exists public.push_subscriptions;

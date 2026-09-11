@@ -140,7 +140,6 @@ export function Dashboard({
       <div className="pointer-events-none absolute top-72 -left-20 h-56 w-56 rounded-full bg-warn-soft/40 blur-3xl" />
 
       <Header
-        userId={userId}
         profile={profile}
         myGoal={myGoal}
         onGoalClick={() => setShowGoal(true)}

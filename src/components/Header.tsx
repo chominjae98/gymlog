@@ -6,13 +6,11 @@ import { HeaderMenu } from "@/components/HeaderMenu";
 import type { Profile } from "@/types/database";
 
 export function Header({
-  userId,
   profile,
   myGoal,
   onGoalClick,
   onHeatmapClick,
 }: {
-  userId: string;
   profile: Profile;
   myGoal: number | null;
   onGoalClick: () => void;
@@ -57,7 +55,7 @@ export function Header({
             <Target size={13} className="text-brand-strong" />
             {myGoal ? `주 ${myGoal}일` : "목표 설정"}
           </button>
-          <HeaderMenu userId={userId} />
+          <HeaderMenu />
         </div>
       </div>
     </header>

@@ -45,15 +45,6 @@ export type WorkoutLogComment = {
   created_at: string;
 };
 
-export type PushSubscriptionRow = {
-  id: string;
-  user_id: string;
-  endpoint: string;
-  p256dh: string;
-  auth_key: string;
-  created_at: string;
-};
-
 export type Database = {
   public: {
     Tables: {
@@ -106,17 +97,6 @@ export type Database = {
           body: string;
         };
         Update: Partial<WorkoutLogComment>;
-        Relationships: [];
-      };
-      push_subscriptions: {
-        Row: PushSubscriptionRow;
-        Insert: Partial<PushSubscriptionRow> & {
-          user_id: string;
-          endpoint: string;
-          p256dh: string;
-          auth_key: string;
-        };
-        Update: Partial<PushSubscriptionRow>;
         Relationships: [];
       };
     };
