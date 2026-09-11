@@ -10,6 +10,8 @@ import { FineSection } from "@/components/FineSection";
 import { FineWatchlist } from "@/components/FineWatchlist";
 import { WeeklyGoalSheet } from "@/components/WeeklyGoalSheet";
 import { UploadSheet } from "@/components/UploadSheet";
+import { HeatmapSheet } from "@/components/HeatmapSheet";
+import { SettlementSheet } from "@/components/SettlementSheet";
 import {
   computeWeeklyStatus,
   countUniquePeople,
@@ -48,6 +50,8 @@ export function Dashboard({
   const [showGoal, setShowGoal] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadDateKey, setUploadDateKey] = useState<string | null>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showSettlement, setShowSettlement] = useState(false);
 
   // 서버가 새로 내려준 값(props)을 기본값 삼아 로컬 상태로 들고 있다가,
   // 사용자가 방금 한 행동(목표 변경 등)을 router.refresh() 응답을 기다리지 않고
@@ -135,7 +139,13 @@ export function Dashboard({
       <div className="pointer-events-none absolute -top-16 right-[-4rem] h-64 w-64 rounded-full bg-brand-soft/60 blur-3xl" />
       <div className="pointer-events-none absolute top-72 -left-20 h-56 w-56 rounded-full bg-warn-soft/40 blur-3xl" />
 
-      <Header profile={profile} myGoal={myGoal} onGoalClick={() => setShowGoal(true)} />
+      <Header
+        userId={userId}
+        profile={profile}
+        myGoal={myGoal}
+        onGoalClick={() => setShowGoal(true)}
+        onHeatmapClick={() => setShowHeatmap(true)}
+      />
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
         <button
@@ -165,7 +175,11 @@ export function Dashboard({
           onSelectDate={setSelectedKey}
         />
 
-        <FineSection progress={weeklyProgress} weeklyFine={weeklyFine} />
+        <FineSection
+          progress={weeklyProgress}
+          weeklyFine={weeklyFine}
+          onSettlementClick={() => setShowSettlement(true)}
+        />
       </main>
 
       <button
@@ -262,6 +276,16 @@ export function Dashboard({
             setShowUpload(false);
             router.refresh();
           }}
+        />
+      )}
+
+      {showHeatmap && <HeatmapSheet userId={userId} onClose={() => setShowHeatmap(false)} />}
+
+      {showSettlement && (
+        <SettlementSheet
+          monthDate={monthDate}
+          weeklyFine={weeklyFine}
+          onClose={() => setShowSettlement(false)}
         />
       )}
     </div>

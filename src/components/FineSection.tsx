@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Users } from "lucide-react";
+import { Receipt, Users } from "lucide-react";
 import { DayDots } from "@/components/DayDots";
 import { computeFineAmount } from "@/lib/dashboard-data";
 import type { WeeklyProgress } from "@/types/database";
@@ -19,9 +19,11 @@ const STATUS_META: Record<
 export function FineSection({
   progress,
   weeklyFine,
+  onSettlementClick,
 }: {
   progress: WeeklyProgress[];
   weeklyFine: number;
+  onSettlementClick: () => void;
 }) {
   const sorted = [...progress].sort((a, b) => {
     const order = { fined: 0, "at-risk": 1, safe: 2, "no-goal": 3 };
@@ -30,9 +32,18 @@ export function FineSection({
 
   return (
     <div className="surface-card p-5">
-      <div className="mb-3.5 flex items-center gap-1.5">
-        <Users size={15} className="text-muted" />
-        <h2 className="text-[16px] font-bold text-foreground">이번 주 현황</h2>
+      <div className="mb-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Users size={15} className="text-muted" />
+          <h2 className="text-[16px] font-bold text-foreground">이번 주 현황</h2>
+        </div>
+        <button
+          onClick={onSettlementClick}
+          className="flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition active:scale-95"
+        >
+          <Receipt size={12} className="text-brand-strong" />
+          이 달 정산
+        </button>
       </div>
 
       {sorted.length === 0 ? (

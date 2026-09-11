@@ -116,3 +116,31 @@ export const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 export function isSameMonthGuard(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
+
+/**
+ * 정산에 포함할 주(week_start=월요일) 목록. 한 주는 "그 주의 월요일이 속한 달"에만
+ * 귀속시킨다 (달력 그리드처럼 앞뒤 달 날짜까지 포함하는 범위를 그대로 쓰면, 월 경계에
+ * 걸친 주가 두 달의 정산에 중복으로 잡히기 때문).
+ */
+export function getWeekStartsInMonth(monthDate: Date) {
+  const start = startOfWeek(startOfMonth(monthDate), WEEK_OPTS);
+  const end = endOfWeek(endOfMonth(monthDate), WEEK_OPTS);
+  const starts: string[] = [];
+  let cursor = start;
+  while (cursor <= end) {
+    if (isSameMonth(cursor, monthDate)) starts.push(toDateKey(cursor));
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7);
+  }
+  return starts;
+}
+
+/** week_start(그 주 월요일)로부터 그 주의 [월요일, 일요일] 날짜키 범위를 구한다. */
+export function getWeekRangeFromStart(weekStartKey: string) {
+  const monday = new Date(`${weekStartKey}T00:00:00`);
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  return { start: weekStartKey, end: toDateKey(sunday) };
+}
+
+export function formatMonthShort(date: Date) {
+  return format(date, "M월", { locale: ko });
+}

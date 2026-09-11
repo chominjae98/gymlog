@@ -29,6 +29,31 @@ export type AppSettings = {
   fine_per_day: number;
 };
 
+export type WorkoutLogReaction = {
+  id: string;
+  log_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+};
+
+export type WorkoutLogComment = {
+  id: string;
+  log_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+};
+
+export type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth_key: string;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -63,6 +88,37 @@ export type Database = {
         Update: Partial<AppSettings>;
         Relationships: [];
       };
+      workout_log_reactions: {
+        Row: WorkoutLogReaction;
+        Insert: Partial<WorkoutLogReaction> & {
+          log_id: string;
+          user_id: string;
+          emoji: string;
+        };
+        Update: Partial<WorkoutLogReaction>;
+        Relationships: [];
+      };
+      workout_log_comments: {
+        Row: WorkoutLogComment;
+        Insert: Partial<WorkoutLogComment> & {
+          log_id: string;
+          user_id: string;
+          body: string;
+        };
+        Update: Partial<WorkoutLogComment>;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: PushSubscriptionRow;
+        Insert: Partial<PushSubscriptionRow> & {
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_key: string;
+        };
+        Update: Partial<PushSubscriptionRow>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -83,4 +139,31 @@ export type WeeklyProgress = {
   achievedDays: number;
   remainingDaysInWeek: number;
   status: "no-goal" | "safe" | "at-risk" | "fined";
+};
+
+/** 게시물 하나에 달린 리액션 집계 (이모지별 인원 수 + 내가 누른 이모지) */
+export type LogReactionSummary = {
+  counts: Record<string, number>;
+  myEmoji: string | null;
+};
+
+/** 화면에서 쓰는, 작성자 정보가 join 된 댓글 */
+export type CommentWithProfile = WorkoutLogComment & {
+  profile: Pick<Profile, "id" | "nickname" | "avatar_url">;
+};
+
+/** 특정 달(월) 안에서, 한 사람의 주차별 정산 내역 */
+export type WeeklySettlementEntry = {
+  weekStart: string;
+  targetDays: number | null;
+  achievedDays: number;
+  status: WeeklyProgress["status"];
+  fine: number;
+};
+
+/** 특정 달(월) 정산 요약 — 사람별 총 벌금과 주차별 내역 */
+export type MonthlySettlement = {
+  profile: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  totalFine: number;
+  weeks: WeeklySettlementEntry[];
 };

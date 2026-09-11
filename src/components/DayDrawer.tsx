@@ -11,6 +11,7 @@ import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import { EditPostSheet } from "@/components/EditPostSheet";
+import { PostSocialPanel } from "@/components/PostSocialPanel";
 import type { WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
@@ -161,6 +162,8 @@ export function DayDrawer({
                       {log.memo}
                     </p>
                   )}
+
+                  <PostSocialPanel logId={log.id} currentUserId={currentUserId} />
                 </article>
               ))}
             </div>
