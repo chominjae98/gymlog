@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_COOKIE_OPTIONS } from "@/lib/supabase/cookie-options";
+import { resolveCookieOptions } from "@/lib/supabase/cookie-options";
 
 /**
  * 모든 요청마다 Supabase 세션(쿠키)을 갱신한다.
@@ -23,7 +23,7 @@ export async function updateSession(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, { ...options, ...AUTH_COOKIE_OPTIONS })
+            supabaseResponse.cookies.set(name, value, resolveCookieOptions(name, value, options))
           );
         },
       },

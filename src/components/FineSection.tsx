@@ -3,18 +3,8 @@
 import Image from "next/image";
 import { Users } from "lucide-react";
 import { DayDots } from "@/components/DayDots";
-import { computeFineAmount } from "@/lib/dashboard-data";
+import { computeFineAmount, WEEKLY_STATUS_META } from "@/lib/dashboard-data";
 import type { WeeklyProgress } from "@/types/database";
-
-const STATUS_META: Record<
-  WeeklyProgress["status"],
-  { label: string; badgeClass: string }
-> = {
-  "no-goal": { label: "목표 미설정", badgeClass: "bg-surface-muted text-muted" },
-  safe: { label: "순항 중", badgeClass: "bg-brand-soft text-brand-strong" },
-  "at-risk": { label: "목표 미달성", badgeClass: "bg-amber-100 text-amber-700" },
-  fined: { label: "벌금 확정", badgeClass: "bg-warn-soft text-warn" },
-};
 
 export function FineSection({
   progress,
@@ -45,7 +35,7 @@ export function FineSection({
       ) : (
       <ul className="flex flex-col gap-2">
         {sorted.map((p) => {
-          const meta = STATUS_META[p.status];
+          const meta = WEEKLY_STATUS_META[p.status];
           const fine = computeFineAmount(p.status, weeklyFine);
 
           return (

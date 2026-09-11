@@ -35,3 +35,12 @@ export async function addComment(supabase: Client, logId: string, userId: string
 export async function deleteComment(supabase: Client, commentId: string) {
   return supabase.from("workout_log_comments").delete().eq("id", commentId);
 }
+
+export async function updateComment(supabase: Client, commentId: string, body: string) {
+  return supabase
+    .from("workout_log_comments")
+    .update({ body })
+    .eq("id", commentId)
+    .select("id, log_id, user_id, body, created_at, profile:profiles(id, nickname, avatar_url)")
+    .single();
+}

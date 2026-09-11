@@ -37,7 +37,11 @@ export async function getTotalLogDays(supabase: Client, userId: string): Promise
   return new Set((data ?? []).map((r) => r.log_date)).size;
 }
 
-/** 오늘(포함)부터 거꾸로 세어 현재 몇 일 연속 인증 중인지 (오늘 아직 안 했으면 어제부터 셈). */
+/**
+ * 오늘(포함)부터 거꾸로 세어 현재 몇 일 연속 인증 중인지 (오늘 아직 안 했으면 어제부터 셈).
+ * logDates는 호출부(getHeatmapLogDates)가 최근 HEATMAP_DAYS일치만 조회해서 넘겨주므로,
+ * 연속 기록이 그보다 길면 그 지점에서 끊긴 것으로 계산된다(computeLongestStreak과 동일한 한계).
+ */
 export function computeCurrentStreak(logDates: Set<string>, today: Date) {
   let streak = 0;
   const cursor = new Date(today);

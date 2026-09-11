@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { EllipsisVertical, LogOut, Moon, Sun } from "lucide-react";
 import { signOut } from "@/lib/auth";
+import { useClickOutside } from "@/lib/useClickOutside";
 
 type Theme = "light" | "dark";
 
@@ -25,16 +26,7 @@ export function HeaderMenu() {
     setTheme(current);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleOutside(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [open]);
+  useClickOutside(rootRef, open, () => setOpen(false));
 
   function toggleTheme() {
     const next: Theme = theme === "dark" ? "light" : "dark";

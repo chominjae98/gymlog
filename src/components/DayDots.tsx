@@ -9,10 +9,12 @@ export function DayDots({
   tone?: "brand" | "warn";
 }) {
   const fillClass = tone === "warn" ? "bg-warn" : "bg-brand";
+  // 목표를 낮춘 뒤에 이미 그보다 많이 달성한 경우, 초과분도 점으로 보이도록 개수를 늘린다.
+  const dotsCount = Math.max(target, achieved);
 
   return (
     <div className="flex items-center gap-1.5">
-      {Array.from({ length: target }).map((_, i) => (
+      {Array.from({ length: dotsCount }).map((_, i) => (
         <span
           key={i}
           className={`h-2.5 w-2.5 rounded-full transition-colors ${

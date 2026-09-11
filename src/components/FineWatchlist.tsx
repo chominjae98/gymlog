@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { AlertTriangle, PartyPopper } from "lucide-react";
 import { DayDots } from "@/components/DayDots";
-import { computeFineAmount } from "@/lib/dashboard-data";
+import { computeFineAmount, WEEKLY_STATUS_META } from "@/lib/dashboard-data";
 import type { WeeklyProgress } from "@/types/database";
 
 /**
@@ -74,7 +74,7 @@ export function FineWatchlist({
                       isFined ? "bg-warn-soft text-warn" : "bg-amber-100 text-amber-700",
                     ].join(" ")}
                   >
-                    {isFined ? `${fineAmount.toLocaleString()}원` : "목표 미달성"}
+                    {isFined ? `${fineAmount.toLocaleString()}원` : WEEKLY_STATUS_META["at-risk"].label}
                   </span>
                 </div>
                 {p.targetDays != null && (

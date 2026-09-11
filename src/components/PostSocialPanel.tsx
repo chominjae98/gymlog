@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Send, Trash2 } from "lucide-react";
+import { Check, Pencil, Send, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { addComment, deleteComment, getCommentsForLogs } from "@/lib/social-data";
+import { addComment, deleteComment, getCommentsForLogs, updateComment } from "@/lib/social-data";
 import { useToast } from "@/components/ToastProvider";
 import type { CommentWithProfile } from "@/types/database";
 
@@ -20,6 +20,9 @@ export function PostSocialPanel({
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
   const [showAllComments, setShowAllComments] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // 방금 업로드한 사진은 서버 새로고침 전까지 화면에만 존재하는 임시(optimistic) 기록이라
   // 아직 실제 log_id가 없다. 이 경우 댓글 조회를 건너뛴다.
@@ -55,9 +58,41 @@ export function PostSocialPanel({
 
   async function handleDeleteComment(commentId: string) {
     const supabase = createClient();
+    const prevComments = comments;
     setComments((prev) => prev.filter((c) => c.id !== commentId));
     const { error } = await deleteComment(supabase, commentId);
-    if (error) showToast("댓글 삭제에 실패했어요.", "error");
+    if (error) {
+      setComments(prevComments);
+      showToast("댓글 삭제에 실패했어요.", "error");
+    }
+  }
+
+  function startEditComment(c: CommentWithProfile) {
+    setEditingId(c.id);
+    setEditText(c.body);
+  }
+
+  function cancelEditComment() {
+    setEditingId(null);
+    setEditText("");
+  }
+
+  async function handleSaveEditComment(commentId: string) {
+    const body = editText.trim();
+    if (!body || savingEdit) return;
+    const prevComments = comments;
+    setSavingEdit(true);
+    setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, body } : c)));
+    const supabase = createClient();
+    const { error } = await updateComment(supabase, commentId, body);
+    setSavingEdit(false);
+    if (error) {
+      setComments(prevComments);
+      showToast("댓글 수정에 실패했어요.", "error");
+      return;
+    }
+    setEditingId(null);
+    setEditText("");
   }
 
   const visibleComments = showAllComments ? comments : comments.slice(-2);
@@ -75,21 +110,61 @@ export function PostSocialPanel({
               댓글 {comments.length}개 모두 보기
             </button>
           )}
-          {visibleComments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2 text-[12.5px] leading-relaxed">
-              <span className="shrink-0 font-semibold text-foreground">{c.profile.nickname}</span>
-              <span className="min-w-0 flex-1 break-words text-foreground/90">{c.body}</span>
-              {c.user_id === currentUserId && (
+          {visibleComments.map((c) =>
+            editingId === c.id ? (
+              <div key={c.id} className="flex items-center gap-2 text-[12.5px] leading-relaxed">
+                <input
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveEditComment(c.id);
+                    if (e.key === "Escape") cancelEditComment();
+                  }}
+                  maxLength={300}
+                  autoFocus
+                  className="min-w-0 flex-1 rounded-full bg-surface-muted px-3 py-1.5 text-[12.5px] text-foreground outline-none"
+                />
                 <button
-                  onClick={() => handleDeleteComment(c.id)}
-                  aria-label="댓글 삭제"
+                  onClick={() => handleSaveEditComment(c.id)}
+                  disabled={savingEdit || !editText.trim()}
+                  aria-label="댓글 수정 완료"
+                  className="shrink-0 text-brand disabled:opacity-40"
+                >
+                  <Check size={14} />
+                </button>
+                <button
+                  onClick={cancelEditComment}
+                  aria-label="댓글 수정 취소"
                   className="shrink-0 text-muted"
                 >
-                  <Trash2 size={12} />
+                  <X size={14} />
                 </button>
-              )}
-            </div>
-          ))}
+              </div>
+            ) : (
+              <div key={c.id} className="flex items-start gap-2 text-[12.5px] leading-relaxed">
+                <span className="shrink-0 font-semibold text-foreground">{c.profile.nickname}</span>
+                <span className="min-w-0 flex-1 break-words text-foreground/90">{c.body}</span>
+                {c.user_id === currentUserId && (
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      onClick={() => startEditComment(c)}
+                      aria-label="댓글 수정"
+                      className="text-muted"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteComment(c.id)}
+                      aria-label="댓글 삭제"
+                      className="text-muted"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          )}
         </div>
       )}
 

@@ -8,6 +8,7 @@ import { countUniquePeople } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos } from "@/lib/storage-upload";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
+import { useClickOutside } from "@/lib/useClickOutside";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import { EditPostSheet } from "@/components/EditPostSheet";
@@ -202,6 +203,15 @@ function PhotoCarousel({ photoUrls, nickname }: { photoUrls: string[]; nickname:
   const trackRef = useRef<HTMLDivElement>(null);
   const indexRef = useRef(0);
 
+  // 게시물 수정 등으로 사진 장수가 줄어들어 현재 인덱스가 범위를 벗어나면 마지막 사진으로 맞춘다.
+  // (렌더 중 props 변화를 감지해 상태를 조정하는 패턴 — Dashboard.tsx의 override 리셋과 동일)
+  const [prevPhotoUrls, setPrevPhotoUrls] = useState(photoUrls);
+  if (photoUrls !== prevPhotoUrls) {
+    setPrevPhotoUrls(photoUrls);
+    const clamped = Math.min(index, Math.max(photoUrls.length - 1, 0));
+    if (clamped !== index) setIndex(clamped);
+  }
+
   // 인덱스가 바뀌면(스와이프 완료 등) 트랙 위치를 그 사진으로 맞추고, ref도 최신화한다.
   useEffect(() => {
     indexRef.current = index;
@@ -325,17 +335,7 @@ function PostMenu({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleOutside(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [open]);
+  useClickOutside(rootRef, open, () => setOpen(false));
 
   return (
     <div ref={rootRef} className="relative ml-1 shrink-0">

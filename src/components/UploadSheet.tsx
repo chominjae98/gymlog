@@ -70,13 +70,30 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
     const resized = await resizeImagesForUpload(accepted);
     setFiles((prev) => [...prev, ...resized]);
     setPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
-    setError(null); // "사진을 먼저 선택해 주세요" 등 이전 에러가 사진을 고른 뒤에도 남아있지 않도록
+    // "사진을 먼저 선택해 주세요" 등 이전 에러가 사진을 고른 뒤에도 남아있지 않도록,
+    // 단 이번에 방 부족으로 일부가 잘렸다면 그 사실을 대신 알려준다.
+    setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
   }
 
   function removePhoto(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
-    setPreviews((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
   }
+
+  // 시트를 닫거나 업로드가 끝나 언마운트될 때, 아직 해제하지 않은 미리보기 blob URL을 정리한다.
+  // (매 렌더 후 최신 목록을 ref에 반영해두고, 언마운트 시 그 시점의 최신 목록을 해제한다)
+  const previewsRef = useRef(previews);
+  useEffect(() => {
+    previewsRef.current = previews;
+  }, [previews]);
+  useEffect(() => {
+    return () => {
+      previewsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   async function handleSubmit() {
     if (files.length === 0) {

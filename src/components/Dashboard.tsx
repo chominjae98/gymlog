@@ -270,7 +270,12 @@ export function Dashboard({
 
             // 업로드한 날짜가 "오늘"일 때만 이번 주 달성 현황에 즉시 +1로 낙관적 반영한다.
             // 과거 날짜는 이번 주 범위가 아닐 수도 있어 서버 새로고침 결과를 그대로 신뢰한다.
-            if (uploadedDateKey === tKey) {
+            // 단, achievedDays는 "인증한 날짜 수"이므로 오늘 이미 인증한 기록이 있다면
+            // (같은 날 두 번째 업로드) 날짜 수는 늘지 않으므로 +1 하지 않는다.
+            const alreadyLoggedToday = monthLogs.some(
+              (log) => log.user_id === userId && log.log_date === uploadedDateKey
+            );
+            if (uploadedDateKey === tKey && !alreadyLoggedToday) {
               setProgressOverride(
                 weeklyProgress.map((p) => {
                   if (p.profile.id !== userId) return p;

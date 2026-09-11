@@ -62,7 +62,15 @@ export async function getMonthlySettlement(
       ).size;
 
       const isCurrentWeek = weekStart === currentWeekStart;
-      const remaining = isCurrentWeek ? remainingDaysInWeekIncludingToday(today) : 0;
+      const isFutureWeek = weekStart > todayKey;
+      // 이미 끝난 과거 주는 남은 요일이 0이라 목표 미달 시 그대로 확정(fined)되지만,
+      // 아직 시작하지 않은 미래 주(현재 UI에서는 생성되지 않으나 방어적으로 처리)는
+      // 시작 전이므로 fined로 확정하지 않는다.
+      const remaining = isCurrentWeek
+        ? remainingDaysInWeekIncludingToday(today)
+        : isFutureWeek
+          ? 7
+          : 0;
       const status = computeWeeklyStatus(achievedDays, targetDays, remaining);
 
       return {

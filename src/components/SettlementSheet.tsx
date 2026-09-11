@@ -20,13 +20,18 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const [settlement, setSettlement] = useState<MonthlySettlement[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    getMonthlySettlement(supabase, monthDate, nowInSeoul(), weeklyFine).then((data) => {
-      if (!cancelled) setSettlement(data);
-    });
+    getMonthlySettlement(supabase, monthDate, nowInSeoul(), weeklyFine)
+      .then((data) => {
+        if (!cancelled) setSettlement(data);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -62,7 +67,12 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4">
-          {settlement === null ? (
+          {loadError ? (
+            <div className="flex h-40 flex-col items-center justify-center gap-1 text-center text-[13px] text-muted">
+              <p>정산 정보를 불러오지 못했어요.</p>
+              <p>잠시 후 다시 열어봐 주세요.</p>
+            </div>
+          ) : settlement === null ? (
             <div className="flex h-40 items-center justify-center text-[13px] text-muted">
               불러오는 중...
             </div>

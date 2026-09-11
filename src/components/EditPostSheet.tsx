@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -46,7 +46,7 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
     const resized = await resizeImagesForUpload(accepted);
     setNewFiles((prev) => [...prev, ...resized]);
     setNewPreviews((prev) => [...prev, ...resized.map((f) => URL.createObjectURL(f))]);
-    setError(null);
+    setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
   }
 
   function removeKept(url: string) {
@@ -55,8 +55,22 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
 
   function removeNew(index: number) {
     setNewFiles((prev) => prev.filter((_, i) => i !== index));
-    setNewPreviews((prev) => prev.filter((_, i) => i !== index));
+    setNewPreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
   }
+
+  // 시트를 닫거나 저장이 끝나 언마운트될 때, 아직 해제하지 않은 미리보기 blob URL을 정리한다.
+  const newPreviewsRef = useRef(newPreviews);
+  useEffect(() => {
+    newPreviewsRef.current = newPreviews;
+  }, [newPreviews]);
+  useEffect(() => {
+    return () => {
+      newPreviewsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   async function handleSave() {
     if (totalCount === 0) {

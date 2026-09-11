@@ -22,6 +22,7 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
   const [logDates, setLogDates] = useState<Set<string> | null>(null);
   const [totalDays, setTotalDays] = useState<number | null>(null);
   const [selectedCell, setSelectedCell] = useState<HeatmapCell | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,15 +31,20 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
     Promise.all([
       getHeatmapLogDates(supabase, userId, today),
       getTotalLogDays(supabase, userId),
-    ]).then(([dates, total]) => {
-      if (cancelled) return;
-      setLogDates(dates);
-      setTotalDays(total);
-      // 처음 열었을 때는 오늘 칸이 선택된 상태로 시작해서, 탭하면 날짜가 뜬다는 걸 바로 알려준다.
-      const { weeks } = buildHeatmapWeeks(dates, today);
-      const todayCell = weeks.flat().find((cell) => cell.date.getTime() === today.setHours(0, 0, 0, 0));
-      setSelectedCell(todayCell ?? null);
-    });
+    ])
+      .then(([dates, total]) => {
+        if (cancelled) return;
+        setLogDates(dates);
+        setTotalDays(total);
+        // 처음 열었을 때는 오늘 칸이 선택된 상태로 시작해서, 탭하면 날짜가 뜬다는 걸 바로 알려준다.
+        const { weeks } = buildHeatmapWeeks(dates, today);
+        const todayTs = new Date(today).setHours(0, 0, 0, 0);
+        const todayCell = weeks.flat().find((cell) => cell.date.getTime() === todayTs);
+        setSelectedCell(todayCell ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -74,7 +80,12 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
           </button>
         </div>
 
-        {logDates === null ? (
+        {loadError ? (
+          <div className="flex h-40 flex-col items-center justify-center gap-1 text-center text-[13px] text-muted">
+            <p>히트맵을 불러오지 못했어요.</p>
+            <p>잠시 후 다시 열어봐 주세요.</p>
+          </div>
+        ) : logDates === null ? (
           <div className="flex h-40 items-center justify-center text-[13px] text-muted">
             불러오는 중...
           </div>

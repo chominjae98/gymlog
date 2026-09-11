@@ -6,8 +6,8 @@ const STORAGE_MARKER = `/${BUCKET}/`;
 
 /**
  * 운동 인증 사진들을 workout-photos 버킷의 `${userId}/...` 경로에 업로드하고
- * 공개 URL 목록을 반환한다. 하나라도 업로드에 실패하면 그 시점에서 멈추고
- * 에러를 던진다 (UploadSheet / EditPostSheet 둘 다에서 공용으로 사용).
+ * 공개 URL 목록을 반환한다. 하나라도 업로드에 실패하면 그 시점까지 이미 올라간
+ * 파일들을 정리(best-effort)한 뒤 에러를 던진다 (UploadSheet / EditPostSheet 둘 다에서 공용으로 사용).
  */
 export async function uploadWorkoutPhotos(
   supabase: SupabaseClient<Database>,
@@ -15,10 +15,12 @@ export async function uploadWorkoutPhotos(
   dateKey: string,
   files: File[]
 ): Promise<string[]> {
+  const uploadedPaths: string[] = [];
   const urls: string[] = [];
 
   for (const file of files) {
-    const ext = file.name.split(".").pop() || "jpg";
+    const dotIndex = file.name.lastIndexOf(".");
+    const ext = dotIndex === -1 ? "jpg" : file.name.slice(dotIndex + 1);
     const path = `${userId}/${dateKey}-${Date.now()}-${urls.length}.${ext}`;
 
     const { error } = await supabase.storage
@@ -26,8 +28,12 @@ export async function uploadWorkoutPhotos(
       .upload(path, file, { cacheControl: "3600", upsert: false });
 
     if (error) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from(BUCKET).remove(uploadedPaths);
+      }
       throw new Error("사진 업로드에 실패했어요. 다시 시도해 주세요.");
     }
+    uploadedPaths.push(path);
 
     const {
       data: { publicUrl },

@@ -61,6 +61,21 @@ export function computeFineAmount(
 }
 
 /**
+ * 이번 주 현황 status별 화면 표기(라벨/배지 스타일). FineSection, FineWatchlist가 공유한다.
+ * "at-risk"는 아직 남은 요일로 목표 달성이 가능한 상태이므로(computeWeeklyStatus 참고),
+ * 이미 실패가 확정된 것처럼 보이지 않도록 "fined"와 다른 문구를 쓴다.
+ */
+export const WEEKLY_STATUS_META: Record<
+  WeeklyProgress["status"],
+  { label: string; badgeClass: string }
+> = {
+  "no-goal": { label: "목표 미설정", badgeClass: "bg-surface-muted text-muted" },
+  safe: { label: "순항 중", badgeClass: "bg-brand-soft text-brand-strong" },
+  "at-risk": { label: "목표 달성 중", badgeClass: "bg-amber-100 text-amber-700" },
+  fined: { label: "벌금 확정", badgeClass: "bg-warn-soft text-warn" },
+};
+
+/**
  * 목표 대비 현재 상태를 계산하는 순수 함수. 서버(getWeeklyProgress)뿐 아니라
  * 클라이언트에서 사용자가 방금 한 행동(목표 변경 등)을 화면에 즉시 반영하는
  * 낙관적 업데이트(optimistic update)에도 그대로 재사용한다.
