@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Receipt } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
@@ -19,7 +19,7 @@ import {
   todayKey,
 } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
-import { isSameMonthGuard, nowInSeoul } from "@/lib/date";
+import { formatMonthTitle, isSameMonthGuard, nowInSeoul } from "@/lib/date";
 import type { Profile, WeeklyProgress, WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
@@ -148,6 +148,26 @@ export function Dashboard({
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
         <button
+          onClick={() => setShowSettlement(true)}
+          className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warn-soft">
+              <Receipt size={18} className="text-warn" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">
+                {formatMonthTitle(monthDate)} 정산 요약
+              </p>
+              <p className="mt-0.5 text-[12px] text-muted">벌금 얼마 모였는지 한눈에 보기</p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
+            보기
+          </span>
+        </button>
+
+        <button
           onClick={() => setSelectedKey(tKey)}
           className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
         >
@@ -174,11 +194,7 @@ export function Dashboard({
           onSelectDate={setSelectedKey}
         />
 
-        <FineSection
-          progress={weeklyProgress}
-          weeklyFine={weeklyFine}
-          onSettlementClick={() => setShowSettlement(true)}
-        />
+        <FineSection progress={weeklyProgress} weeklyFine={weeklyFine} />
       </main>
 
       <button

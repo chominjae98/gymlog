@@ -28,6 +28,15 @@ export async function getHeatmapLogDates(
   return new Set((data ?? []).map((r) => r.log_date));
 }
 
+/**
+ * 히트맵 표시 기간과 무관하게, 지금까지 인증한 "날짜 수"(총 누적)를 센다.
+ * 같은 날 여러 번 올렸어도 하루로 센다 — 그래서 row 개수가 아니라 log_date 종류 수를 센다.
+ */
+export async function getTotalLogDays(supabase: Client, userId: string): Promise<number> {
+  const { data } = await supabase.from("workout_logs").select("log_date").eq("user_id", userId);
+  return new Set((data ?? []).map((r) => r.log_date)).size;
+}
+
 /** 오늘(포함)부터 거꾸로 세어 현재 몇 일 연속 인증 중인지 (오늘 아직 안 했으면 어제부터 셈). */
 export function computeCurrentStreak(logDates: Set<string>, today: Date) {
   let streak = 0;

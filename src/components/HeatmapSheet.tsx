@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { Flame, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { nowInSeoul } from "@/lib/date";
+import { formatDayTitle, nowInSeoul } from "@/lib/date";
 import {
   buildHeatmapWeeks,
   computeCurrentStreak,
   computeLongestStreak,
   getHeatmapLogDates,
+  getTotalLogDays,
+  type HeatmapCell,
 } from "@/lib/heatmap-data";
 import { HeatmapView } from "@/components/HeatmapView";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
@@ -18,12 +20,24 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const [logDates, setLogDates] = useState<Set<string> | null>(null);
+  const [totalDays, setTotalDays] = useState<number | null>(null);
+  const [selectedCell, setSelectedCell] = useState<HeatmapCell | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    getHeatmapLogDates(supabase, userId, nowInSeoul()).then((dates) => {
-      if (!cancelled) setLogDates(dates);
+    const today = nowInSeoul();
+    Promise.all([
+      getHeatmapLogDates(supabase, userId, today),
+      getTotalLogDays(supabase, userId),
+    ]).then(([dates, total]) => {
+      if (cancelled) return;
+      setLogDates(dates);
+      setTotalDays(total);
+      // 처음 열었을 때는 오늘 칸이 선택된 상태로 시작해서, 탭하면 날짜가 뜬다는 걸 바로 알려준다.
+      const { weeks } = buildHeatmapWeeks(dates, today);
+      const todayCell = weeks.flat().find((cell) => cell.date.getTime() === today.setHours(0, 0, 0, 0));
+      setSelectedCell(todayCell ?? null);
     });
     return () => {
       cancelled = true;
@@ -33,7 +47,6 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
   const today = nowInSeoul();
   const currentStreak = logDates ? computeCurrentStreak(logDates, today) : 0;
   const longestStreak = logDates ? computeLongestStreak(logDates, today) : 0;
-  const totalDays = logDates?.size ?? 0;
   const { weeks, monthLabels } = logDates
     ? buildHeatmapWeeks(logDates, today)
     : { weeks: [], monthLabels: [] };
@@ -70,16 +83,31 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
             <div className="mt-4 grid grid-cols-3 gap-2">
               <StatCard label="연속 인증" value={`${currentStreak}일`} emphasize />
               <StatCard label="최장 기록" value={`${longestStreak}일`} />
-              <StatCard label="최근 약 5개월" value={`${totalDays}일`} />
+              <StatCard label="누적 인증" value={`${totalDays ?? 0}일`} />
             </div>
 
             <div className="mt-5 surface-card p-4">
-              <HeatmapView weeks={weeks} monthLabels={monthLabels} />
-              <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-muted">
-                적음
-                <span className="h-[11px] w-[11px] rounded-[3px] bg-surface-muted" />
-                <span className="h-[11px] w-[11px] rounded-[3px] bg-brand" />
-                많음
+              <HeatmapView
+                weeks={weeks}
+                monthLabels={monthLabels}
+                selectedKey={selectedCell?.key}
+                onSelectCell={setSelectedCell}
+              />
+
+              <div className="mt-3 flex flex-col gap-1.5">
+                <p className="text-[12.5px] font-medium text-foreground">
+                  {selectedCell
+                    ? `${formatDayTitle(selectedCell.date)} · ${
+                        selectedCell.achieved ? "인증했어요 🔥" : "인증 안 함"
+                      }`
+                    : "칸을 눌러 날짜를 확인해보세요"}
+                </p>
+                <div className="flex items-center justify-end gap-1.5 text-[10px] text-muted">
+                  적음
+                  <span className="h-[11px] w-[11px] rounded-[3px] bg-surface-muted" />
+                  <span className="h-[11px] w-[11px] rounded-[3px] bg-brand" />
+                  많음
+                </div>
               </div>
             </div>
           </>

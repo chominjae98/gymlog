@@ -29,14 +29,6 @@ export type AppSettings = {
   fine_per_day: number;
 };
 
-export type WorkoutLogReaction = {
-  id: string;
-  log_id: string;
-  user_id: string;
-  emoji: string;
-  created_at: string;
-};
-
 export type WorkoutLogComment = {
   id: string;
   log_id: string;
@@ -79,16 +71,6 @@ export type Database = {
         Update: Partial<AppSettings>;
         Relationships: [];
       };
-      workout_log_reactions: {
-        Row: WorkoutLogReaction;
-        Insert: Partial<WorkoutLogReaction> & {
-          log_id: string;
-          user_id: string;
-          emoji: string;
-        };
-        Update: Partial<WorkoutLogReaction>;
-        Relationships: [];
-      };
       workout_log_comments: {
         Row: WorkoutLogComment;
         Insert: Partial<WorkoutLogComment> & {
@@ -119,12 +101,6 @@ export type WeeklyProgress = {
   achievedDays: number;
   remainingDaysInWeek: number;
   status: "no-goal" | "safe" | "at-risk" | "fined";
-};
-
-/** 게시물 하나에 달린 리액션 집계 (이모지별 인원 수 + 내가 누른 이모지) */
-export type LogReactionSummary = {
-  counts: Record<string, number>;
-  myEmoji: string | null;
 };
 
 /** 화면에서 쓰는, 작성자 정보가 join 된 댓글 */

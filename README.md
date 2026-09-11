@@ -15,10 +15,10 @@
 
 1. [supabase.com](https://supabase.com) 에서 새 프로젝트 생성 (Region은 `Northeast Asia (Seoul)` 권장)
 2. **SQL Editor** 에서 [`supabase/schema.sql`](supabase/schema.sql) 내용을 그대로 실행
-   - `profiles`, `weekly_goals`, `workout_logs`, `app_settings`, `workout_log_reactions`, `workout_log_comments` 테이블 생성
+   - `profiles`, `weekly_goals`, `workout_logs`, `app_settings`, `workout_log_comments` 테이블 생성
    - RLS 정책 (친구들끼리는 서로 조회 가능, 내 데이터만 수정/삭제 가능)
    - `workout-photos` 공개 Storage 버킷 자동 생성
-   - ⚠️ 이미 예전 버전을 실행해서 운영 중인 프로젝트라면, 리액션/댓글 기능을 쓰기 위해 **`schema.sql` 전체를 다시 한 번 SQL Editor에서 그대로 실행**해주세요. 모든 문장이 재실행 가능(idempotent)하게 되어 있어(`create table if not exists`, 정책은 `drop policy if exists` 후 재생성) 기존 데이터나 정책을 깨뜨리지 않고 새 테이블/정책만 추가됩니다. (한때 있었던 알림 리마인더용 `push_subscriptions` 테이블은 이 실행으로 자동 정리됩니다.)
+   - ⚠️ 이미 예전 버전을 실행해서 운영 중인 프로젝트라면, 댓글 기능을 쓰기 위해 **`schema.sql` 전체를 다시 한 번 SQL Editor에서 그대로 실행**해주세요. 모든 문장이 재실행 가능(idempotent)하게 되어 있어(`create table if not exists`, 정책은 `drop policy if exists` 후 재생성) 기존 데이터나 정책을 깨뜨리지 않고 새 테이블/정책만 추가됩니다. (한때 있었던 알림 리마인더용 `push_subscriptions`, 리액션용 `workout_log_reactions` 테이블은 이 실행으로 자동 정리됩니다 — `weekly_goals`/`workout_logs`/`workout_log_comments` 등 남겨둔 테이블의 기존 데이터는 전혀 영향받지 않습니다.)
 3. **Authentication → URL Configuration**
    - Site URL: 배포 도메인 (Vercel 배포 주소)
    - Redirect URLs 에 `http://localhost:3000/auth/callback` 과 실제 배포 주소의 `/auth/callback` 추가
@@ -69,9 +69,9 @@ npm run dev
   - `possibleMax < 목표일수` 이면 수학적으로 더 이상 달성 불가능 → **벌금 확정** (부족한 일수와 무관하게 `app_settings.fine_per_day` 고정 금액 1회 부과)
   - `possibleMax == 목표일수` 이면 하루도 빠짐없이 채워야 하는 상태 → **막판 스퍼트**
   - 벌금 단가는 `app_settings.fine_per_day` (기본 5,000원, SQL Editor에서 직접 수정 가능)
-- **이 달 정산 요약**: "이번 주 현황" 카드의 "이 달 정산" 버튼 → 이번 달에 걸친 모든 주를 다시 계산해서 사람별 누적 벌금 합계를 보여줌. 실제 송금 기능은 없고, "요약 복사하기"로 텍스트를 만들어 채팅방에 붙여넣는 용도.
-- **댓글 · 리액션**: 날짜를 눌러 연 게시물마다 이모지 리액션(🔥👏💪😂, 1인 1개, 다시 누르면 취소/교체)과 댓글을 남길 수 있음. 본인 댓글만 삭제 가능.
-- **내 활동 히트맵**: 헤더의 불꽃 아이콘 → 최근 약 5개월 인증 기록을 GitHub 잔디밭처럼 시각화, 현재 연속 일수 / 최장 연속 일수 / 총 인증 일수 표시.
+- **이 달 정산 요약**: 홈 화면 맨 위 "OO월 정산 요약" 카드 → 이번 달에 걸친 모든 주를 다시 계산해서 사람별 누적 벌금 합계를 보여줌. 실제 송금 기능은 없고, "요약 복사하기"로 텍스트를 만들어 채팅방에 붙여넣는 용도.
+- **댓글**: 날짜를 눌러 연 게시물마다 댓글을 남길 수 있음. 본인 댓글만 삭제 가능.
+- **내 활동 히트맵**: 헤더의 불꽃 아이콘 → 최근 약 5개월 인증 기록을 GitHub 잔디밭처럼 시각화. 칸을 탭하면 그 날짜(몇 월 며칠, 무슨 요일)와 인증 여부가 아래 캡션에 표시됨. 연속 인증 일수 / 최장 기록 / 지금까지 누적 인증 일수(전체 기간 기준) 표시.
 
 ## 6. Vercel 배포
 
@@ -124,7 +124,7 @@ src/
     supabase/          # 서버/브라우저/미들웨어 Supabase 클라이언트
     dashboard-data.ts   # 서버에서 쓰는 데이터 조회 & 벌금 계산 로직
     settlement-data.ts   # 월간 정산 요약 계산
-    social-data.ts        # 리액션/댓글 조회·작성
+    social-data.ts        # 댓글 조회·작성
     heatmap-data.ts        # 히트맵 그리드 & 연속 일수 계산
     client-data.ts          # 브라우저에서 달력 이동 시 쓰는 재조회 로직
     date.ts                  # 주/월 계산 유틸 (월요일 시작 기준)

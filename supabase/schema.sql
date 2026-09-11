@@ -201,49 +201,7 @@ create policy "user can delete own workout photos"
   );
 
 -- ------------------------------------------------------------
--- 6. workout_log_reactions : 인증 게시물 이모지 리액션
---    한 사람당 게시물 하나에 이모지 하나만 (다시 누르면 토글로 취소/변경)
--- ------------------------------------------------------------
-create table if not exists public.workout_log_reactions (
-  id uuid primary key default gen_random_uuid(),
-  log_id uuid not null references public.workout_logs (id) on delete cascade,
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  emoji text not null,
-  created_at timestamptz not null default now(),
-  unique (log_id, user_id)
-);
-
-create index if not exists workout_log_reactions_log_idx on public.workout_log_reactions (log_id);
-
-alter table public.workout_log_reactions enable row level security;
-
-drop policy if exists "reactions are viewable by every logged in friend" on public.workout_log_reactions;
-create policy "reactions are viewable by every logged in friend"
-  on public.workout_log_reactions for select
-  to authenticated
-  using (true);
-
-drop policy if exists "user can upsert own reaction" on public.workout_log_reactions;
-create policy "user can upsert own reaction"
-  on public.workout_log_reactions for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
-drop policy if exists "user can update own reaction" on public.workout_log_reactions;
-create policy "user can update own reaction"
-  on public.workout_log_reactions for update
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-drop policy if exists "user can delete own reaction" on public.workout_log_reactions;
-create policy "user can delete own reaction"
-  on public.workout_log_reactions for delete
-  to authenticated
-  using (auth.uid() = user_id);
-
--- ------------------------------------------------------------
--- 7. workout_log_comments : 인증 게시물 댓글
+-- 6. workout_log_comments : 인증 게시물 댓글
 -- ------------------------------------------------------------
 create table if not exists public.workout_log_comments (
   id uuid primary key default gen_random_uuid(),
@@ -276,7 +234,10 @@ create policy "user can delete own comment"
   using (auth.uid() = user_id);
 
 -- ------------------------------------------------------------
--- 8. (제거됨) 웹 푸시 알림 리마인더 기능을 뺐다. 예전 버전을 실행해서
---    이미 push_subscriptions 테이블이 생성돼 있다면 이 문장이 정리해준다.
+-- 7. (제거된 기능 정리) 웹 푸시 알림 리마인더와 이모지 리액션 기능을 뺐다.
+--    예전 버전을 실행해서 아래 테이블이 이미 생성돼 있다면 이 문장들이 정리해준다.
+--    (workout_logs, weekly_goals, workout_log_comments 등 남겨둔 테이블의
+--    기존 데이터는 전혀 건드리지 않는다.)
 -- ------------------------------------------------------------
 drop table if exists public.push_subscriptions;
+drop table if exists public.workout_log_reactions;

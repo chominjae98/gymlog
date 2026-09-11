@@ -3,20 +3,11 @@
 import { useEffect, useState } from "react";
 import { Send, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import {
-  addComment,
-  deleteComment,
-  getCommentsForLogs,
-  getReactionsForLogs,
-  REACTION_EMOJIS,
-  toggleReaction,
-} from "@/lib/social-data";
+import { addComment, deleteComment, getCommentsForLogs } from "@/lib/social-data";
 import { useToast } from "@/components/ToastProvider";
-import type { CommentWithProfile, LogReactionSummary } from "@/types/database";
+import type { CommentWithProfile } from "@/types/database";
 
-const EMPTY_SUMMARY: LogReactionSummary = { counts: {}, myEmoji: null };
-
-/** 인증 게시물 하나에 달리는 이모지 리액션 + 댓글. DayDrawer의 게시물 카드 하단에 붙는다. */
+/** 인증 게시물 하나에 달리는 댓글. DayDrawer의 게시물 카드 하단에 붙는다. */
 export function PostSocialPanel({
   logId,
   currentUserId,
@@ -25,52 +16,27 @@ export function PostSocialPanel({
   currentUserId: string;
 }) {
   const showToast = useToast();
-  const [reactions, setReactions] = useState<LogReactionSummary>(EMPTY_SUMMARY);
   const [comments, setComments] = useState<CommentWithProfile[]>([]);
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
   const [showAllComments, setShowAllComments] = useState(false);
 
   // 방금 업로드한 사진은 서버 새로고침 전까지 화면에만 존재하는 임시(optimistic) 기록이라
-  // 아직 실제 log_id가 없다. 이 경우 리액션/댓글 조회를 건너뛴다.
+  // 아직 실제 log_id가 없다. 이 경우 댓글 조회를 건너뛴다.
   const isOptimistic = logId.startsWith("optimistic-");
 
   useEffect(() => {
     if (isOptimistic) return;
     let cancelled = false;
     const supabase = createClient();
-    Promise.all([
-      getReactionsForLogs(supabase, [logId], currentUserId),
-      getCommentsForLogs(supabase, [logId]),
-    ]).then(([reactionMap, commentMap]) => {
+    getCommentsForLogs(supabase, [logId]).then((commentMap) => {
       if (cancelled) return;
-      setReactions(reactionMap.get(logId) ?? EMPTY_SUMMARY);
       setComments(commentMap.get(logId) ?? []);
     });
     return () => {
       cancelled = true;
     };
-  }, [logId, currentUserId, isOptimistic]);
-
-  async function handleToggle(emoji: string) {
-    const supabase = createClient();
-    const prevMyEmoji = reactions.myEmoji;
-
-    setReactions((prev) => {
-      const counts = { ...prev.counts };
-      if (prevMyEmoji) counts[prevMyEmoji] = Math.max(0, (counts[prevMyEmoji] ?? 1) - 1);
-      const nextMy = prevMyEmoji === emoji ? null : emoji;
-      if (nextMy) counts[nextMy] = (counts[nextMy] ?? 0) + 1;
-      return { counts, myEmoji: nextMy };
-    });
-
-    const { error } = await toggleReaction(supabase, logId, currentUserId, emoji, prevMyEmoji);
-    if (error) {
-      showToast("반응을 남기지 못했어요.", "error");
-      const map = await getReactionsForLogs(supabase, [logId], currentUserId);
-      setReactions(map.get(logId) ?? EMPTY_SUMMARY);
-    }
-  }
+  }, [logId, isOptimistic]);
 
   async function handleAddComment() {
     const body = commentText.trim();
@@ -99,29 +65,8 @@ export function PostSocialPanel({
 
   return (
     <div className="border-t border-border px-4 py-3">
-      <div className="flex flex-wrap items-center gap-1.5">
-        {REACTION_EMOJIS.map((emoji) => {
-          const count = reactions.counts[emoji] ?? 0;
-          const mine = reactions.myEmoji === emoji;
-          return (
-            <button
-              key={emoji}
-              onClick={() => handleToggle(emoji)}
-              disabled={isOptimistic}
-              className={[
-                "flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold transition active:scale-90",
-                mine ? "bg-brand-soft text-brand-strong" : "bg-surface-muted text-muted",
-              ].join(" ")}
-            >
-              <span>{emoji}</span>
-              {count > 0 && <span>{count}</span>}
-            </button>
-          );
-        })}
-      </div>
-
       {comments.length > 0 && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {hiddenCount > 0 && (
             <button
               onClick={() => setShowAllComments(true)}
@@ -148,7 +93,7 @@ export function PostSocialPanel({
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className={["flex items-center gap-2", comments.length > 0 && "mt-3"].filter(Boolean).join(" ")}>
         <input
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
