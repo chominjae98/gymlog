@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { signInWithKakao } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/client";
 
 function KakaoIcon() {
   return (
@@ -15,7 +17,22 @@ function KakaoIcon() {
 }
 
 export function LoginScreen({ authError }: { authError?: boolean }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  // OAuth 콜백 직후 서버 렌더가 쿠키 반영보다 먼저 실행된 경우를 복구한다.
+  // 브라우저에서 세션을 확인한 뒤 즉시 서버 컴포넌트를 다시 받아 로그인 화면에
+  // 머무르지 않도록 한다.
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled && session) router.refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleLogin() {
     setLoading(true);

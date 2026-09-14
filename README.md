@@ -21,7 +21,7 @@
    - ⚠️ 이미 예전 버전을 실행해서 운영 중인 프로젝트라면, 댓글 기능을 쓰기 위해 **`schema.sql` 전체를 다시 한 번 SQL Editor에서 그대로 실행**해주세요. 모든 문장이 재실행 가능(idempotent)하게 되어 있어(`create table if not exists`, 정책은 `drop policy if exists` 후 재생성) 기존 데이터나 정책을 깨뜨리지 않고 새 테이블/정책만 추가됩니다. (한때 있었던 알림 리마인더용 `push_subscriptions`, 리액션용 `workout_log_reactions` 테이블은 이 실행으로 자동 정리됩니다 — `weekly_goals`/`workout_logs`/`workout_log_comments` 등 남겨둔 테이블의 기존 데이터는 전혀 영향받지 않습니다.)
 3. **Authentication → URL Configuration**
    - Site URL: 배포 도메인 (Vercel 배포 주소)
-   - Redirect URLs 에 `http://localhost:3000/auth/callback` 과 실제 배포 주소의 `/auth/callback` 추가
+   - Redirect URLs 에 `http://localhost:4000/auth/callback` 과 실제 배포 주소의 `/auth/callback` 추가
 
 ## 2. 카카오 로그인 연동
 
@@ -56,7 +56,7 @@ npm install
 npm run dev
 ```
 
-`http://localhost:3000` 접속 → 카카오 로그인 → 이번 달 달력 화면 확인
+`http://localhost:4000` 접속 → 카카오 로그인 → 이번 달 달력 화면 확인
 
 ## 5. 주요 기능이 동작하는 방식
 
