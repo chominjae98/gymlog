@@ -19,6 +19,7 @@ import type { WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
   userId: string;
+  roomId: string;
   initialDateKey: string;
   onClose: () => void;
   onUploaded: (dateKey: string, photoUrls: string[], memo: string | null) => void;
@@ -27,7 +28,7 @@ type Props = {
 const MAX_PHOTOS = 5;
 const EMPTY_LOGS_BY_DATE = new Map<string, WorkoutLogWithProfile[]>();
 
-export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Props) {
+export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploaded }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
@@ -67,13 +68,13 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
     useState<Map<string, WorkoutLogWithProfile[]>>(EMPTY_LOGS_BY_DATE);
   useEffect(() => {
     let cancelled = false;
-    fetchMonthLogs(calendarMonth).then((logs) => {
+    fetchMonthLogs(calendarMonth, roomId).then((logs) => {
       if (!cancelled) setCalendarLogsByDate(groupLogsByDate(logs));
     });
     return () => {
       cancelled = true;
     };
-  }, [calendarMonth]);
+  }, [calendarMonth, roomId]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -164,6 +165,7 @@ export function UploadSheet({ userId, initialDateKey, onClose, onUploaded }: Pro
 
     const { error: insertError } = await supabase.from("workout_logs").insert({
       user_id: userId,
+      room_id: roomId,
       log_date: selectedDateKey,
       photo_urls: photoUrls,
       photo_hashes: fileHashes,

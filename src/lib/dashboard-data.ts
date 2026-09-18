@@ -18,19 +18,20 @@ type Client = SupabaseClient<Database>;
 export async function getProfile(supabase: Client, userId: string) {
   const { data } = await supabase
     .from("profiles")
-    .select("id, nickname, avatar_url, kakao_id, created_at")
+    .select("id, nickname, avatar_url, toss_user_key, created_at")
     .eq("id", userId)
     .single();
   return data as Profile | null;
 }
 
-export async function getMonthLogs(supabase: Client, monthDate: Date) {
+export async function getMonthLogs(supabase: Client, monthDate: Date, roomId: string) {
   const { start, end } = getMonthRangeKeys(monthDate);
   const { data } = await supabase
     .from("workout_logs")
     .select(
       "id, user_id, log_date, photo_urls, photo_hashes, memo, created_at, profile:profiles(id, nickname, avatar_url)"
     )
+    .eq("room_id", roomId)
     .gte("log_date", start)
     .lte("log_date", end)
     .order("created_at", { ascending: false });
@@ -42,12 +43,13 @@ export async function getMonthLogs(supabase: Client, monthDate: Date) {
  * DB 컬럼명은 fine_per_day지만, 실제로는 "하루당" 금액이 아니라
  * 그 주 목표를 못 채우면 날짜 수와 무관하게 한 번만 부과되는 고정(주간) 벌금액이다.
  * 컬럼명을 그대로 노출하면 헷갈리므로 앱 코드에서는 weeklyFine으로 부른다.
+ * 벌금 단가는 방마다 다르게 설정할 수 있어 rooms.fine_per_day에서 읽는다.
  */
-export async function getFinePerDay(supabase: Client) {
+export async function getFinePerDay(supabase: Client, roomId: string) {
   const { data } = await supabase
-    .from("app_settings")
+    .from("rooms")
     .select("fine_per_day")
-    .eq("id", 1)
+    .eq("id", roomId)
     .single();
   return data?.fine_per_day ?? 5000;
 }
@@ -99,33 +101,41 @@ export function computeWeeklyStatus(
 /** 오늘 기준 이번 주, 멤버별 목표 달성 현황 (벌금 위기 계산 포함) */
 export async function getWeeklyProgress(
   supabase: Client,
-  today: Date
+  today: Date,
+  roomId: string
 ): Promise<WeeklyProgress[]> {
   const weekStart = getWeekStartKey(today);
   const { start, end } = getWeekRangeKeys(today);
   const remaining = remainingDaysInWeekIncludingToday(today);
 
-  const [{ data: profiles }, { data: goals }, { data: logs }, { data: exceptions }] =
+  const [{ data: members }, { data: goals }, { data: logs }, { data: exceptions }] =
     await Promise.all([
       supabase
-        .from("profiles")
-        .select("id, nickname, avatar_url")
-        .order("created_at", { ascending: true }),
+        .from("room_members")
+        .select("profile:profiles(id, nickname, avatar_url)")
+        .eq("room_id", roomId),
       supabase
         .from("weekly_goals")
         .select("user_id, target_days")
+        .eq("room_id", roomId)
         .eq("week_start", weekStart),
       supabase
         .from("workout_logs")
         .select("user_id, log_date")
+        .eq("room_id", roomId)
         .gte("log_date", start)
         .lte("log_date", end),
       supabase
         .from("fine_exceptions")
         .select("user_id")
+        .eq("room_id", roomId)
         .eq("week_start", weekStart)
         .eq("status", "approved"),
     ]);
+
+  const profiles = (
+    (members ?? []) as unknown as { profile: Pick<Profile, "id" | "nickname" | "avatar_url"> }[]
+  ).map((m) => m.profile);
 
   const goalByUser = new Map(
     (goals ?? []).map((g) => [g.user_id, g.target_days])
@@ -164,13 +174,15 @@ export async function getWeeklyProgress(
 export async function getMyWeeklyGoal(
   supabase: Client,
   userId: string,
-  today: Date
+  today: Date,
+  roomId: string
 ) {
   const weekStart = getWeekStartKey(today);
   const { data } = await supabase
     .from("weekly_goals")
     .select("target_days")
     .eq("user_id", userId)
+    .eq("room_id", roomId)
     .eq("week_start", weekStart)
     .maybeSingle();
   return data?.target_days ?? null;

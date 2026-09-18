@@ -20,7 +20,8 @@ export async function getMonthlySettlement(
   supabase: Client,
   monthDate: Date,
   today: Date,
-  weeklyFine: number
+  weeklyFine: number,
+  roomId: string
 ): Promise<MonthlySettlement[]> {
   const weekStarts = getWeekStartsInMonth(monthDate);
   const { start: monthStart, end: monthEnd } = getMonthRangeKeys(monthDate);
@@ -30,27 +31,34 @@ export async function getMonthlySettlement(
     return todayKey >= start && todayKey <= end;
   });
 
-  const [{ data: profiles }, { data: goals }, { data: logs }, { data: exceptions }] =
+  const [{ data: members }, { data: goals }, { data: logs }, { data: exceptions }] =
     await Promise.all([
       supabase
-        .from("profiles")
-        .select("id, nickname, avatar_url")
-        .order("created_at", { ascending: true }),
+        .from("room_members")
+        .select("profile:profiles(id, nickname, avatar_url)")
+        .eq("room_id", roomId),
       supabase
         .from("weekly_goals")
         .select("user_id, week_start, target_days")
+        .eq("room_id", roomId)
         .in("week_start", weekStarts),
       supabase
         .from("workout_logs")
         .select("user_id, log_date")
+        .eq("room_id", roomId)
         .gte("log_date", monthStart)
         .lte("log_date", monthEnd),
       supabase
         .from("fine_exceptions")
         .select("user_id, week_start")
+        .eq("room_id", roomId)
         .in("week_start", weekStarts)
         .eq("status", "approved"),
     ]);
+
+  const profiles = (
+    (members ?? []) as unknown as { profile: { id: string; nickname: string; avatar_url: string | null } }[]
+  ).map((m) => m.profile);
 
   const goalByUserWeek = new Map<string, number>();
   for (const g of goals ?? []) {

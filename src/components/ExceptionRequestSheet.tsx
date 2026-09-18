@@ -13,6 +13,7 @@ const MAX_LENGTH = 500;
 type Props = {
   userId: string;
   weekStart: string;
+  roomId: string;
   onClose: () => void;
   onSubmitted: () => void;
 };
@@ -20,7 +21,7 @@ type Props = {
 /** "이번 주 벌금 위기" 상태인 사람이 피치 못할 사정을 적어 제출하는 사유서 시트.
  * 제출 즉시 벌금이 빠지는 게 아니라, 나머지 멤버들의 투표(다수결)로 승인되어야
  * 그 주 목표 달성일수에 +1로 카운트된다. */
-export function ExceptionRequestSheet({ userId, weekStart, onClose, onSubmitted }: Props) {
+export function ExceptionRequestSheet({ userId, weekStart, roomId, onClose, onSubmitted }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
@@ -42,7 +43,8 @@ export function ExceptionRequestSheet({ userId, weekStart, onClose, onSubmitted 
       supabase,
       userId,
       weekStart,
-      trimmed
+      trimmed,
+      roomId
     );
 
     setSubmitting(false);

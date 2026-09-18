@@ -2,13 +2,14 @@ export type Profile = {
   id: string;
   nickname: string;
   avatar_url: string | null;
-  kakao_id: string | null;
+  toss_user_key: string | null;
   created_at: string;
 };
 
 export type WeeklyGoal = {
   id: string;
   user_id: string;
+  room_id: string;
   week_start: string; // YYYY-MM-DD, 그 주의 월요일
   target_days: number;
   created_at: string;
@@ -18,6 +19,7 @@ export type WeeklyGoal = {
 export type WorkoutLog = {
   id: string;
   user_id: string;
+  room_id: string;
   log_date: string; // YYYY-MM-DD
   photo_urls: string[]; // 사진 여러 장 첨부 가능, 최소 1장
   photo_hashes: string[]; // photo_urls와 같은 순서 - 동일 사진 재업로드 방지용 SHA-256 해시
@@ -41,6 +43,7 @@ export type WorkoutLogComment = {
 export type FineException = {
   id: string;
   user_id: string;
+  room_id: string;
   week_start: string; // YYYY-MM-DD, 그 주의 월요일
   reason: string;
   status: "pending" | "approved" | "rejected";
@@ -56,6 +59,28 @@ export type FineExceptionVote = {
   created_at: string;
 };
 
+export type Room = {
+  id: string;
+  name: string;
+  invite_code: string;
+  fine_per_day: number;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type RoomMember = {
+  room_id: string;
+  user_id: string;
+  joined_at: string;
+};
+
+export type LeaderboardEntry = {
+  user_id: string;
+  nickname: string;
+  avatar_url: string | null;
+  total_days: number;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -69,6 +94,7 @@ export type Database = {
         Row: WeeklyGoal;
         Insert: Partial<WeeklyGoal> & {
           user_id: string;
+          room_id: string;
           week_start: string;
           target_days: number;
         };
@@ -79,9 +105,22 @@ export type Database = {
         Row: WorkoutLog;
         Insert: Partial<WorkoutLog> & {
           user_id: string;
+          room_id: string;
           photo_urls: string[];
         };
         Update: Partial<WorkoutLog>;
+        Relationships: [];
+      };
+      rooms: {
+        Row: Room;
+        Insert: Partial<Room> & { name: string; invite_code: string };
+        Update: Partial<Room>;
+        Relationships: [];
+      };
+      room_members: {
+        Row: RoomMember;
+        Insert: RoomMember;
+        Update: Partial<RoomMember>;
         Relationships: [];
       };
       app_settings: {
@@ -104,6 +143,7 @@ export type Database = {
         Row: FineException;
         Insert: Partial<FineException> & {
           user_id: string;
+          room_id: string;
           week_start: string;
           reason: string;
         };
@@ -122,7 +162,20 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_room: {
+        Args: { name: string; fine_per_day?: number };
+        Returns: Room;
+      };
+      join_room_by_code: {
+        Args: { code: string };
+        Returns: Room;
+      };
+      get_global_leaderboard: {
+        Args: { limit_count?: number };
+        Returns: LeaderboardEntry[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

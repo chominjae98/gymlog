@@ -25,6 +25,7 @@ import { formatMonthTitle, isSameMonthGuard, nowInSeoul } from "@/lib/date";
 import type {
   FineExceptionWithVotes,
   Profile,
+  Room,
   WeeklyProgress,
   WorkoutLogWithProfile,
 } from "@/types/database";
@@ -32,6 +33,9 @@ import type {
 type Props = {
   userId: string;
   profile: Profile;
+  room: Room;
+  roomMemberCount: number;
+  onSwitchRoomClick: () => void;
   initialMonthLogs: WorkoutLogWithProfile[];
   initialWeeklyProgress: WeeklyProgress[];
   initialMyGoal: number | null;
@@ -43,6 +47,9 @@ type Props = {
 export function Dashboard({
   userId,
   profile,
+  room,
+  roomMemberCount,
+  onSwitchRoomClick,
   initialMonthLogs,
   initialWeeklyProgress,
   initialMyGoal,
@@ -50,6 +57,7 @@ export function Dashboard({
   weekStart,
   initialExceptions,
 }: Props) {
+  const roomId = room.id;
   const router = useRouter();
   const today = nowInSeoul();
 
@@ -108,7 +116,7 @@ export function Dashboard({
       setOtherMonthLogs(null);
       return;
     }
-    const logs = await fetchMonthLogs(next);
+    const logs = await fetchMonthLogs(next, roomId);
     setOtherMonthLogs(logs);
   }
 
@@ -152,15 +160,17 @@ export function Dashboard({
   }, [router]);
 
   return (
-    <div className="relative min-h-dvh overflow-x-hidden bg-background pb-28">
+    <div className="relative min-h-dvh overflow-x-hidden bg-background pb-40">
       <div className="pointer-events-none absolute -top-16 right-[-4rem] h-64 w-64 rounded-full bg-brand-soft/60 blur-3xl" />
       <div className="pointer-events-none absolute top-72 -left-20 h-56 w-56 rounded-full bg-warn-soft/40 blur-3xl" />
 
       <Header
         profile={profile}
+        room={room}
         myGoal={myGoal}
         onGoalClick={() => setShowGoal(true)}
         onHeatmapClick={() => setShowHeatmap(true)}
+        onRoomClick={onSwitchRoomClick}
       />
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
@@ -206,7 +216,7 @@ export function Dashboard({
         <FineExceptionPanel
           exceptions={initialExceptions}
           currentUserId={userId}
-          totalMembers={weeklyProgress.length}
+          totalMembers={roomMemberCount}
           myStatus={weeklyProgress.find((p) => p.profile.id === userId)?.status}
           onRequestClick={() => setShowExceptionRequest(true)}
           onMutated={() => router.refresh()}
@@ -228,7 +238,7 @@ export function Dashboard({
           setUploadDateKey(tKey);
           setShowUpload(true);
         }}
-        className="safe-bottom fixed bottom-6 right-5 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-black/25 transition active:scale-95"
+        className="safe-bottom fixed bottom-24 right-5 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-black/25 transition active:scale-95"
         aria-label="운동 인증하기"
       >
         <Plus size={28} />
@@ -255,6 +265,7 @@ export function Dashboard({
       {showGoal && (
         <WeeklyGoalSheet
           userId={userId}
+          roomId={roomId}
           currentGoal={myGoal}
           onClose={() => setShowGoal(false)}
           onSaved={(targetDays) => {
@@ -280,6 +291,7 @@ export function Dashboard({
       {showUpload && (
         <UploadSheet
           userId={userId}
+          roomId={roomId}
           initialDateKey={uploadDateKey ?? tKey}
           onClose={() => setShowUpload(false)}
           onUploaded={(uploadedDateKey, photoUrls, memo) => {
@@ -287,6 +299,7 @@ export function Dashboard({
             setOptimisticLog({
               id: `optimistic-${Date.now()}`,
               user_id: userId,
+              room_id: roomId,
               log_date: uploadedDateKey,
               photo_urls: photoUrls,
               photo_hashes: [],
@@ -330,6 +343,7 @@ export function Dashboard({
         <ExceptionRequestSheet
           userId={userId}
           weekStart={weekStart}
+          roomId={roomId}
           onClose={() => setShowExceptionRequest(false)}
           onSubmitted={() => {
             setShowExceptionRequest(false);
@@ -344,6 +358,7 @@ export function Dashboard({
         <SettlementSheet
           monthDate={monthDate}
           weeklyFine={weeklyFine}
+          roomId={roomId}
           onClose={() => setShowSettlement(false)}
         />
       )}

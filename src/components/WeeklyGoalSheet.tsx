@@ -10,6 +10,7 @@ import { useToast } from "@/components/ToastProvider";
 
 type Props = {
   userId: string;
+  roomId: string;
   currentGoal: number | null;
   onClose: () => void;
   onSaved: (targetDays: number) => void;
@@ -18,7 +19,7 @@ type Props = {
 const MIN_DAYS = 1;
 const MAX_DAYS = 7;
 
-export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props) {
+export function WeeklyGoalSheet({ userId, roomId, currentGoal, onClose, onSaved }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
@@ -37,10 +38,11 @@ export function WeeklyGoalSheet({ userId, currentGoal, onClose, onSaved }: Props
       .upsert(
         {
           user_id: userId,
+          room_id: roomId,
           week_start: weekStart,
           target_days: selected,
         },
-        { onConflict: "user_id,week_start" }
+        { onConflict: "user_id,week_start,room_id" }
       );
 
     setSaving(false);

@@ -13,10 +13,11 @@ import type { MonthlySettlement } from "@/types/database";
 type Props = {
   monthDate: Date;
   weeklyFine: number;
+  roomId: string;
   onClose: () => void;
 };
 
-export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
+export function SettlementSheet({ monthDate, weeklyFine, roomId, onClose }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const [settlement, setSettlement] = useState<MonthlySettlement[] | null>(null);
@@ -25,7 +26,7 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    getMonthlySettlement(supabase, monthDate, nowInSeoul(), weeklyFine)
+    getMonthlySettlement(supabase, monthDate, nowInSeoul(), weeklyFine, roomId)
       .then((data) => {
         if (!cancelled) setSettlement(data);
       })
@@ -35,7 +36,7 @@ export function SettlementSheet({ monthDate, weeklyFine, onClose }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [monthDate, weeklyFine]);
+  }, [monthDate, weeklyFine, roomId]);
 
   const sorted = settlement
     ? [...settlement].sort((a, b) => b.totalFine - a.totalFine)

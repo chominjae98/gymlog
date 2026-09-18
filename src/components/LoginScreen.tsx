@@ -2,16 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithKakao } from "@/lib/auth";
+import { signInWithToss } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 
-function KakaoIcon() {
+function TossIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 3.5C6.75 3.5 2.5 6.86 2.5 11c0 2.64 1.75 4.96 4.4 6.3-.19.7-.7 2.58-.8 2.98-.13.5.18.49.38.36.16-.1 2.5-1.7 3.52-2.4.65.1 1.32.15 2 .15 5.25 0 9.5-3.36 9.5-7.5S17.25 3.5 12 3.5z"
-        fill="#1B1D1A"
-      />
+      <circle cx="12" cy="12" r="10" fill="#fff" />
+      <path d="M8 8.5C8 7.67 8.67 7 9.5 7h5c.83 0 1.5.67 1.5 1.5v7c0 .83-.67 1.5-1.5 1.5h-5A1.5 1.5 0 0 1 8 15.5v-7z" fill="#0064FF" />
     </svg>
   );
 }
@@ -37,8 +35,8 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
   async function handleLogin() {
     setLoading(true);
     try {
-      await signInWithKakao();
-    } catch {
+      await signInWithToss();
+    } finally {
       setLoading(false);
     }
   }
@@ -72,10 +70,10 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] py-4 text-[15px] font-semibold text-[#1B1D1A] shadow-[0_8px_20px_-8px_rgba(254,229,0,0.7)] transition active:scale-[0.98] disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0064FF] py-4 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(0,100,255,0.5)] transition active:scale-[0.98] disabled:opacity-60"
           >
-            <KakaoIcon />
-            {loading ? "이동 중..." : "카카오로 3초 만에 시작하기"}
+            <TossIcon />
+            {loading ? "이동 중..." : "토스로 3초 만에 시작하기"}
           </button>
         </div>
       </div>
