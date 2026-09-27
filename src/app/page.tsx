@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LoginScreen } from "@/components/LoginScreen";
 import { AppShell } from "@/components/AppShell";
@@ -22,6 +23,16 @@ export default async function Home({
   }
 
   const params = await searchParams;
+
+  // Supabase의 리다이렉트 URL 허용 목록 설정에 따라 카카오 로그인 콜백이
+  // /auth/callback이 아니라 홈("/")으로 code를 직접 들고 오는 경우가 있다.
+  // 이 경우 세션 교환이 되지 않아 로그인 화면이 반복되므로, 콜백 라우트로 다시 보내
+  // 정상적으로 세션을 교환하고 홈으로 돌아오게 한다.
+  const code = typeof params?.code === "string" ? params.code : undefined;
+  if (code) {
+    redirect(`/auth/callback?code=${encodeURIComponent(code)}&next=/`);
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
