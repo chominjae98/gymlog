@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Home, Trophy } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
 import { LeaderboardView } from "@/components/LeaderboardView";
+import { RoomOnboarding } from "@/components/RoomOnboarding";
 import { RoomSwitcherSheet } from "@/components/RoomSwitcherSheet";
 import type {
   FineExceptionWithVotes,
@@ -17,7 +18,7 @@ import type {
 type Props = {
   userId: string;
   profile: Profile;
-  room: Room;
+  room: Room | null;
   rooms: Room[];
   roomMemberCount: number;
   initialMonthLogs: WorkoutLogWithProfile[];
@@ -26,6 +27,7 @@ type Props = {
   weeklyFine: number;
   weekStart: string;
   initialExceptions: FineExceptionWithVotes[];
+  joinCode?: string;
 };
 
 type Tab = "home" | "leaderboard";
@@ -40,7 +42,7 @@ export function AppShell(props: Props) {
   const [showRoomSwitcher, setShowRoomSwitcher] = useState(false);
 
   function switchRoom(roomId: string) {
-    if (roomId === props.room.id) return;
+    if (roomId === props.room?.id) return;
     router.push(`/?room=${roomId}`);
     router.refresh();
   }
@@ -48,19 +50,23 @@ export function AppShell(props: Props) {
   return (
     <div className="min-h-dvh bg-background">
       {tab === "home" ? (
-        <Dashboard
-          userId={props.userId}
-          profile={props.profile}
-          room={props.room}
-          roomMemberCount={props.roomMemberCount}
-          onSwitchRoomClick={() => setShowRoomSwitcher(true)}
-          initialMonthLogs={props.initialMonthLogs}
-          initialWeeklyProgress={props.initialWeeklyProgress}
-          initialMyGoal={props.initialMyGoal}
-          weeklyFine={props.weeklyFine}
-          weekStart={props.weekStart}
-          initialExceptions={props.initialExceptions}
-        />
+        props.room ? (
+          <Dashboard
+            userId={props.userId}
+            profile={props.profile}
+            room={props.room}
+            roomMemberCount={props.roomMemberCount}
+            onSwitchRoomClick={() => setShowRoomSwitcher(true)}
+            initialMonthLogs={props.initialMonthLogs}
+            initialWeeklyProgress={props.initialWeeklyProgress}
+            initialMyGoal={props.initialMyGoal}
+            weeklyFine={props.weeklyFine}
+            weekStart={props.weekStart}
+            initialExceptions={props.initialExceptions}
+          />
+        ) : (
+          <RoomOnboarding initialCode={props.joinCode} />
+        )
       ) : (
         <LeaderboardView currentUserId={props.userId} />
       )}
@@ -77,7 +83,7 @@ export function AppShell(props: Props) {
         </div>
       </nav>
 
-      {showRoomSwitcher && (
+      {showRoomSwitcher && props.room && (
         <RoomSwitcherSheet
           rooms={props.rooms}
           activeRoomId={props.room.id}

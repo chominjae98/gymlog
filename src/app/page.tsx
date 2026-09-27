@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { LoginScreen } from "@/components/LoginScreen";
-import { RoomOnboarding } from "@/components/RoomOnboarding";
 import { AppShell } from "@/components/AppShell";
 import { SetupNotice } from "@/components/SetupNotice";
 import {
@@ -33,27 +32,29 @@ export default async function Home({
   }
 
   const rooms = await getMyRooms(supabase, user.id);
-  if (rooms.length === 0) {
-    const joinCode = typeof params?.join === "string" ? params.join : undefined;
-    return <RoomOnboarding initialCode={joinCode} />;
-  }
-
   const requestedRoomId = typeof params?.room === "string" ? params.room : undefined;
-  const room = rooms.find((r) => r.id === requestedRoomId) ?? rooms[0];
+  const room = rooms.find((r) => r.id === requestedRoomId) ?? rooms[0] ?? null;
+  const joinCode = typeof params?.join === "string" ? params.join : undefined;
 
   const today = nowInSeoul();
   const weekStart = getWeekStartKey(today);
 
-  const [profile, monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount] =
-    await Promise.all([
-      getProfile(supabase, user.id),
-      getMonthLogs(supabase, today, room.id),
-      getWeeklyProgress(supabase, today, room.id),
-      getMyWeeklyGoal(supabase, user.id, today, room.id),
-      getFinePerDay(supabase, room.id),
-      getFineExceptionsForWeek(supabase, weekStart, room.id),
-      getRoomMemberCount(supabase, room.id),
-    ]);
+  const [profile, roomData] = await Promise.all([
+    getProfile(supabase, user.id),
+    room
+      ? Promise.all([
+          getMonthLogs(supabase, today, room.id),
+          getWeeklyProgress(supabase, today, room.id),
+          getMyWeeklyGoal(supabase, user.id, today, room.id),
+          getFinePerDay(supabase, room.id),
+          getFineExceptionsForWeek(supabase, weekStart, room.id),
+          getRoomMemberCount(supabase, room.id),
+        ])
+      : null,
+  ]);
+
+  const [monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount] =
+    roomData ?? [[], [], null, 0, [], 0];
 
   return (
     <AppShell
@@ -76,6 +77,7 @@ export default async function Home({
       weeklyFine={finePerDay}
       weekStart={weekStart}
       initialExceptions={exceptions}
+      joinCode={joinCode}
     />
   );
 }
