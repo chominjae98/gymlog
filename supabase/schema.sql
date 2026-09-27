@@ -19,10 +19,10 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
--- 카카오 로그인 → 토스 로그인 전환. 기존 카카오 계정은 새 토스 계정과 자동 연결되지 않으며,
--- 친구들이 새로 온보딩한다(합의된 사항이라 kakao_id는 완전히 제거한다).
-alter table public.profiles drop column if exists kakao_id;
+-- 토스 로그인에 이어 카카오 로그인도 다시 지원한다. 계정은 provider별 auth.users row로
+-- 분리되며 자동 연결되지 않는다(같은 사람이 토스/카카오로 각각 들어오면 별개 프로필).
 alter table public.profiles add column if not exists toss_user_key text;
+alter table public.profiles add column if not exists kakao_id text;
 
 create unique index if not exists profiles_toss_user_key_key
   on public.profiles (toss_user_key)
@@ -55,7 +55,7 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, nickname, avatar_url, toss_user_key)
+  insert into public.profiles (id, nickname, avatar_url, toss_user_key, kakao_id)
   values (
     new.id,
     coalesce(
@@ -64,7 +64,12 @@ begin
       '친구'
     ),
     new.raw_user_meta_data ->> 'avatar_url',
-    new.raw_user_meta_data ->> 'toss_user_key'
+    new.raw_user_meta_data ->> 'toss_user_key',
+    case
+      when new.raw_app_meta_data ->> 'provider' = 'kakao'
+        then new.raw_user_meta_data ->> 'provider_id'
+      else null
+    end
   )
   on conflict (id) do nothing;
   return new;

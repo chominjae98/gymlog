@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithToss } from "@/lib/auth";
+import { signInWithKakao, signInWithToss } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 
 function TossIcon() {
@@ -14,9 +14,20 @@ function TossIcon() {
   );
 }
 
+function KakaoIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 3.5C6.75 3.5 2.5 6.86 2.5 11c0 2.64 1.75 4.96 4.4 6.3-.19.7-.7 2.58-.8 2.98-.13.5.18.49.38.36.16-.1 2.5-1.7 3.52-2.4.65.1 1.32.15 2 .15 5.25 0 9.5-3.36 9.5-7.5S17.25 3.5 12 3.5z"
+        fill="#1B1D1A"
+      />
+    </svg>
+  );
+}
+
 export function LoginScreen({ authError }: { authError?: boolean }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<"toss" | "kakao" | null>(null);
 
   // OAuth 콜백 직후 서버 렌더가 쿠키 반영보다 먼저 실행된 경우를 복구한다.
   // 브라우저에서 세션을 확인한 뒤 즉시 서버 컴포넌트를 다시 받아 로그인 화면에
@@ -32,12 +43,21 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
     };
   }, [router]);
 
-  async function handleLogin() {
-    setLoading(true);
+  async function handleTossLogin() {
+    setLoading("toss");
     try {
       await signInWithToss();
     } finally {
-      setLoading(false);
+      setLoading(null);
+    }
+  }
+
+  async function handleKakaoLogin() {
+    setLoading("kakao");
+    try {
+      await signInWithKakao();
+    } catch {
+      setLoading(null);
     }
   }
 
@@ -68,12 +88,20 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
             </p>
           )}
           <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0064FF] py-4 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(0,100,255,0.5)] transition active:scale-[0.98] disabled:opacity-60"
+            onClick={handleKakaoLogin}
+            disabled={loading !== null}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] py-4 text-[15px] font-semibold text-[#1B1D1A] shadow-[0_8px_20px_-8px_rgba(254,229,0,0.7)] transition active:scale-[0.98] disabled:opacity-60"
+          >
+            <KakaoIcon />
+            {loading === "kakao" ? "이동 중..." : "카카오로 3초 만에 시작하기"}
+          </button>
+          <button
+            onClick={handleTossLogin}
+            disabled={loading !== null}
+            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0064FF] py-4 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(0,100,255,0.5)] transition active:scale-[0.98] disabled:opacity-60"
           >
             <TossIcon />
-            {loading ? "이동 중..." : "토스로 3초 만에 시작하기"}
+            {loading === "toss" ? "이동 중..." : "토스로 3초 만에 시작하기"}
           </button>
         </div>
       </div>

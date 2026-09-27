@@ -2,6 +2,25 @@
 
 import { createClient } from "@/lib/supabase/client";
 
+/** 카카오로 로그인 시작 */
+export async function signInWithKakao() {
+  const supabase = createClient();
+  const redirectTo = `${window.location.origin}/auth/callback`;
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "kakao",
+    options: {
+      redirectTo,
+      // 카카오 앱에서 "필수 동의"로 켜둔 항목만 요청 (이메일은 요청하지 않음)
+      scopes: "profile_nickname profile_image",
+    },
+  });
+  if (error) {
+    console.error("카카오 로그인 시작 실패:", error);
+    window.alert("로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.");
+  }
+}
+
 /**
  * 토스 로그인 시작. appLogin()은 실제 토스 앱(웹뷰)/샌드박스 안에서만 동작하고,
  * 일반 브라우저에서 열면 항상 실패한다 — 콘솔 등록 전까지는 이 실패가 정상이다.
