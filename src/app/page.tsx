@@ -51,10 +51,7 @@ export default async function Home({
 
   const rooms = await getMyRooms(supabase, user.id);
   const requestedRoomId = typeof params?.room === "string" ? params.room : undefined;
-  // 특정 방이 ?room=으로 명시된 경우에만 그 방의 대시보드를 보여준다. 명시되지 않았으면
-  // (첫 방문/"홈" 재진입 등) 방을 하나 골라 대신 보여주지 않고, 모두가 공유하는 방 목록
-  // 허브(AppShell의 RoomsHub)로 보낸다.
-  const room = rooms.find((r) => r.id === requestedRoomId) ?? null;
+  const room = rooms.find((r) => r.id === requestedRoomId) ?? rooms[0] ?? null;
   const joinCode = typeof params?.join === "string" ? params.join : undefined;
 
   const today = nowInSeoul();

@@ -11,16 +11,15 @@ import { useToast } from "@/components/ToastProvider";
 type Props = {
   onClose: () => void;
   onJoined: (roomId: string) => void;
-  initialCode?: string;
 };
 
 /** 초대 코드로 기존 방에 참가하는 시트. */
-export function JoinRoomSheet({ onClose, onJoined, initialCode }: Props) {
+export function JoinRoomSheet({ onClose, onJoined }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
 
-  const [code, setCode] = useState(initialCode?.toUpperCase() ?? "");
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

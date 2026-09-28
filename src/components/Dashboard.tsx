@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Receipt } from "lucide-react";
+import { Camera, Plus, Receipt, Users } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
@@ -14,6 +14,7 @@ import { WeeklyGoalSheet } from "@/components/WeeklyGoalSheet";
 import { UploadSheet } from "@/components/UploadSheet";
 import { HeatmapSheet } from "@/components/HeatmapSheet";
 import { SettlementSheet } from "@/components/SettlementSheet";
+import { CreateRoomSheet } from "@/components/CreateRoomSheet";
 import { getRoomAccentClasses } from "@/lib/room-colors";
 import {
   computeWeeklyStatus,
@@ -35,8 +36,10 @@ type Props = {
   userId: string;
   profile: Profile;
   room: Room;
+  rooms: Room[];
   roomMemberCount: number;
-  onBackToHub: () => void;
+  onSwitchRoomClick: () => void;
+  onRoomCreated: (roomId: string) => void;
   initialMonthLogs: WorkoutLogWithProfile[];
   initialWeeklyProgress: WeeklyProgress[];
   initialMyGoal: number | null;
@@ -49,8 +52,10 @@ export function Dashboard({
   userId,
   profile,
   room,
+  rooms,
   roomMemberCount,
-  onBackToHub,
+  onSwitchRoomClick,
+  onRoomCreated,
   initialMonthLogs,
   initialWeeklyProgress,
   initialMyGoal,
@@ -74,6 +79,8 @@ export function Dashboard({
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
   const [showExceptionRequest, setShowExceptionRequest] = useState(false);
+  const [showFabMenu, setShowFabMenu] = useState(false);
+  const [showCreateRoom, setShowCreateRoom] = useState(false);
 
   // 서버가 새로 내려준 값(props)을 기본값 삼아 로컬 상태로 들고 있다가,
   // 사용자가 방금 한 행동(목표 변경 등)을 router.refresh() 응답을 기다리지 않고
@@ -163,7 +170,7 @@ export function Dashboard({
 
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-background pb-40">
-      <div className={`pointer-events-none absolute -top-16 right-[-4rem] h-64 w-64 rounded-full ${roomAccent.soft} opacity-60 blur-3xl`} />
+      <div className="pointer-events-none absolute -top-16 right-[-4rem] h-64 w-64 rounded-full bg-brand-soft/60 blur-3xl" />
       <div className="pointer-events-none absolute top-72 -left-20 h-56 w-56 rounded-full bg-warn-soft/40 blur-3xl" />
 
       <Header
@@ -174,21 +181,6 @@ export function Dashboard({
       />
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
-        <button
-          onClick={onBackToHub}
-          className="flex w-fit items-center gap-2 self-start rounded-full bg-surface-muted py-1.5 pl-2.5 pr-3.5 text-left transition active:scale-95"
-        >
-          <ArrowLeft size={14} className="text-muted" />
-          <span
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${roomAccent.soft}`}
-          >
-            <span className={`text-[10px] font-bold ${roomAccent.strong}`}>
-              {room.name.charAt(0)}
-            </span>
-          </span>
-          <span className="truncate text-[12.5px] font-semibold text-foreground">{room.name}</span>
-        </button>
-
         <button
           onClick={() => setShowSettlement(true)}
           className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
@@ -202,6 +194,32 @@ export function Dashboard({
                 {formatMonthTitle(monthDate)} 정산 요약
               </p>
               <p className="mt-0.5 text-[12px] text-muted">벌금 얼마 모였는지 한눈에 보기</p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
+            보기
+          </span>
+        </button>
+
+        <button
+          onClick={onSwitchRoomClick}
+          className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${roomAccent.soft}`}
+            >
+              <span className={`text-[15px] font-bold ${roomAccent.strong}`}>
+                {room.name.charAt(0)}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-semibold text-foreground">{room.name}</p>
+              <p className="mt-0.5 truncate text-[12px] text-muted">
+                {rooms.length > 1
+                  ? `지금 보고 있는 방 · 외 ${rooms.length - 1}개 참여 중`
+                  : "지금 보고 있는 방"}
+              </p>
             </div>
           </div>
           <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
@@ -248,16 +266,59 @@ export function Dashboard({
         <FineSection progress={weeklyProgress} weeklyFine={weeklyFine} />
       </main>
 
-      <button
-        onClick={() => {
-          setUploadDateKey(tKey);
-          setShowUpload(true);
-        }}
-        className="safe-bottom fixed bottom-24 right-5 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-black/25 transition active:scale-95"
-        aria-label="운동 인증하기"
-      >
-        <Plus size={28} />
-      </button>
+      {showFabMenu && (
+        <button
+          aria-label="닫기"
+          onClick={() => setShowFabMenu(false)}
+          className="fixed inset-0 z-[35] bg-black/10 backdrop-blur-[1px]"
+        />
+      )}
+
+      <div className="safe-bottom fixed bottom-24 right-5 z-40 flex flex-col items-end gap-3">
+        {showFabMenu && (
+          <>
+            <button
+              onClick={() => {
+                setShowFabMenu(false);
+                setShowCreateRoom(true);
+              }}
+              className="animate-fade-up flex items-center gap-3 rounded-full bg-surface py-2 pr-2 pl-4 shadow-[var(--shadow-pop)] transition active:scale-95"
+            >
+              <span className="text-[13px] font-semibold text-foreground">방 생성하기</span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-muted text-foreground">
+                <Users size={18} />
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowFabMenu(false);
+                setUploadDateKey(tKey);
+                setShowUpload(true);
+              }}
+              className="animate-fade-up flex items-center gap-3 rounded-full bg-surface py-2 pr-2 pl-4 shadow-[var(--shadow-pop)] transition active:scale-95"
+              style={{ animationDelay: "40ms" }}
+            >
+              <span className="text-[13px] font-semibold text-foreground">운동 인증하기</span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
+                <Camera size={18} />
+              </span>
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={() => setShowFabMenu((v) => !v)}
+          aria-label={showFabMenu ? "닫기" : "추가하기"}
+          aria-expanded={showFabMenu}
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-black/25 transition active:scale-95"
+        >
+          <Plus
+            size={28}
+            className={`transition-transform duration-200 ${showFabMenu ? "rotate-45" : ""}`}
+          />
+        </button>
+      </div>
 
       {selectedKey && (
         <DayDrawer
@@ -368,6 +429,16 @@ export function Dashboard({
       )}
 
       {showHeatmap && <HeatmapSheet userId={userId} onClose={() => setShowHeatmap(false)} />}
+
+      {showCreateRoom && (
+        <CreateRoomSheet
+          onClose={() => setShowCreateRoom(false)}
+          onCreated={(newRoomId) => {
+            setShowCreateRoom(false);
+            onRoomCreated(newRoomId);
+          }}
+        />
+      )}
 
       {showSettlement && (
         <SettlementSheet
