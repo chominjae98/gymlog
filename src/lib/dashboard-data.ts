@@ -206,3 +206,19 @@ export function todayKey(today: Date) {
 export function countUniquePeople(logs: WorkoutLogWithProfile[]) {
   return new Set(logs.map((log) => log.user_id)).size;
 }
+
+/**
+ * 아바타 미리보기처럼 사람 목록을 보여줄 때, 같은 사람이 여러 장을 올렸어도
+ * 대표 기록(가장 먼저 나온 것) 하나만 남긴다. logs는 이미 최신순으로 정렬돼 있으므로
+ * 결과도 "가장 최근에 인증한 사람 순"이 된다.
+ */
+export function uniqueLogsByUser(logs: WorkoutLogWithProfile[]): WorkoutLogWithProfile[] {
+  const seen = new Set<string>();
+  const result: WorkoutLogWithProfile[] = [];
+  for (const log of logs) {
+    if (seen.has(log.user_id)) continue;
+    seen.add(log.user_id);
+    result.push(log);
+  }
+  return result;
+}

@@ -82,10 +82,10 @@ export function SettlementSheet({ monthDate, weeklyFine, roomId, onClose }: Prop
               <p className="text-[13px] text-muted">이 달에는 정산할 내역이 없어요</p>
             </div>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col divide-y divide-border">
               {sorted.map((s) => (
-                <li key={s.profile.id} className="surface-card flex items-center gap-3 px-4 py-3.5">
-                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-soft">
+                <li key={s.profile.id} className="flex items-center gap-3 py-3">
+                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-muted">
                     {s.profile.avatar_url && (
                       <Image
                         src={s.profile.avatar_url}

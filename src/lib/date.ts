@@ -86,6 +86,14 @@ export function getWeekRangeKeys(date: Date) {
   };
 }
 
+/** 오늘이 속한 주의 월요일~일요일 Date 배열 (월요일 시작, KR 관례). */
+export function getWeekDates(date: Date) {
+  return eachDayOfInterval({
+    start: startOfWeek(date, WEEK_OPTS),
+    end: endOfWeek(date, WEEK_OPTS),
+  });
+}
+
 /** 오늘 포함, 이번 주 일요일까지 남은 일수 (오늘 포함해서 셈) */
 export function remainingDaysInWeekIncludingToday(date: Date) {
   const weekEnd = endOfWeek(date, WEEK_OPTS);

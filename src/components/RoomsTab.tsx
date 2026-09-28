@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Plus, Settings } from "lucide-react";
+import { Loader2, Plus, Settings } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
 import { HeaderMenu } from "@/components/HeaderMenu";
 import { CreateRoomSheet } from "@/components/CreateRoomSheet";
@@ -36,6 +36,8 @@ type Props = {
   joinCode?: string;
   onSelectRoom: (roomId: string) => void;
   onRoomMutated: () => void;
+  isNavigating?: boolean;
+  navigatingRoomId?: string | null;
 };
 
 /**
@@ -53,6 +55,8 @@ export function RoomsTab({
   joinCode,
   onSelectRoom,
   onRoomMutated,
+  isNavigating = false,
+  navigatingRoomId = null,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(!!joinCode);
@@ -106,18 +110,24 @@ export function RoomsTab({
             <ul className="flex flex-col gap-1.5">
               {rooms.map((room) => {
                 const accent = getRoomAccentClasses(room.id);
+                const isThisPending = isNavigating && navigatingRoomId === room.id;
                 return (
                   <li key={room.id} className="surface-card flex items-center gap-2.5 p-2.5">
                     <button
                       onClick={() => onSelectRoom(room.id)}
-                      className="flex flex-1 items-center gap-3 rounded-2xl px-1.5 py-1.5 text-left transition active:scale-[0.99]"
+                      disabled={isNavigating}
+                      className="flex flex-1 items-center gap-3 rounded-2xl px-1.5 py-1.5 text-left transition active:scale-[0.99] disabled:opacity-60"
                     >
                       <span
                         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${accent.soft}`}
                       >
-                        <span className={`text-[16px] font-bold ${accent.strong}`}>
-                          {room.name.charAt(0)}
-                        </span>
+                        {isThisPending ? (
+                          <Loader2 size={18} className={`animate-spin ${accent.strong}`} />
+                        ) : (
+                          <span className={`text-[16px] font-bold ${accent.strong}`}>
+                            {room.name.charAt(0)}
+                          </span>
+                        )}
                       </span>
                       <span className="min-w-0">
                         <p className="truncate text-[14px] font-semibold text-foreground">{room.name}</p>
@@ -125,8 +135,9 @@ export function RoomsTab({
                     </button>
                     <button
                       onClick={() => setManageRoom(room)}
+                      disabled={isNavigating}
                       aria-label={`${room.name} 방 관리`}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition active:scale-90"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition active:scale-90 disabled:opacity-40"
                     >
                       <Settings size={16} />
                     </button>

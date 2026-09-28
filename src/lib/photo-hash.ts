@@ -14,3 +14,22 @@ export async function hashFile(file: File): Promise<string> {
 export async function hashFiles(files: File[]): Promise<string[]> {
   return Promise.all(files.map(hashFile));
 }
+
+/**
+ * 파일별로 리사이즈와 해시 계산을 이어서 처리한다. "전체 리사이즈 완료 → 전체 해시 시작"처럼
+ * 파일 개수만큼의 작업을 두 단계로 나눠 순서대로 기다리지 않고, 파일 하나가 리사이즈되는 대로
+ * 바로 그 파일의 해시 계산을 시작해 전체 처리 시간을 줄인다.
+ */
+export async function resizeAndHashFiles(
+  files: File[],
+  resizeOne: (file: File) => Promise<File>
+): Promise<{ files: File[]; hashes: string[] }> {
+  const results = await Promise.all(
+    files.map(async (file) => {
+      const resized = await resizeOne(file);
+      const hash = await hashFile(resized);
+      return { file: resized, hash };
+    })
+  );
+  return { files: results.map((r) => r.file), hashes: results.map((r) => r.hash) };
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Plus, Receipt } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
@@ -20,9 +21,18 @@ import {
   countUniquePeople,
   groupLogsByDate,
   todayKey,
+  uniqueLogsByUser,
 } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
-import { formatMonthTitle, isSameMonthGuard, nowInSeoul } from "@/lib/date";
+import {
+  formatMonthTitle,
+  formatTime,
+  getWeekDates,
+  isSameMonthGuard,
+  nowInSeoul,
+  toDateKey,
+  WEEKDAY_LABELS,
+} from "@/lib/date";
 import type {
   FineExceptionWithVotes,
   Profile,
@@ -128,7 +138,21 @@ export function Dashboard({
   const logsByDate = groupLogsByDate(monthLogs);
   const tKey = todayKey(today);
 
-  const todayLogsCount = countUniquePeople(logsByDate.get(tKey) ?? []);
+  // "오늘"에 관한 통계(오늘 인증 현황 카드, 아바타 미리보기, 주간 활동 바, 최근 피드)는
+  // 달력에서 다른 달을 넘겨봐도(monthLogs가 그 달의 기록으로 바뀌어도) 항상 실제 오늘 기준으로
+  // 정확해야 하므로, 달력 탐색과 무관하게 서버가 내려준 initialMonthLogs를 기준으로 삼는다.
+  // 단, 방금 "+"로 올린 사진이 오늘 날짜라면(달력을 다른 달로 넘긴 상태여도) 새로고침을
+  // 기다리지 않고 바로 반영되도록 낙관적 기록만 예외적으로 합쳐준다.
+  const homeLogs =
+    optimisticLog && optimisticLog.log_date === tKey
+      ? [optimisticLog, ...initialMonthLogs]
+      : initialMonthLogs;
+  const homeLogsByDate = groupLogsByDate(homeLogs);
+  const todayLogs = homeLogsByDate.get(tKey) ?? [];
+  const todayLogsCount = countUniquePeople(todayLogs);
+  const todayAvatarLogs = uniqueLogsByUser(todayLogs);
+  const recentFeedLogs = homeLogs.slice(0, 2);
+  const weekDates = getWeekDates(today);
 
   // 앱(웹뷰로 감싼 PWA 형태)을 강제종료했다가 다시 열면, OS/웹뷰가 이전 화면을
   // 네트워크 요청 없이 그대로(bfcache 또는 그에 준하는 캐시) 복원하는 경우가 있다.
@@ -201,20 +225,31 @@ export function Dashboard({
 
         <button
           onClick={() => setSelectedKey(tKey)}
-          className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
+          className="surface-card flex items-center justify-between gap-3 px-4 py-3.5 text-left transition active:scale-[0.99]"
         >
-          <div>
+          <div className="min-w-0">
             <p className="text-[13px] font-semibold text-foreground">오늘 인증 현황</p>
             <p className="mt-0.5 text-[12px] text-muted">
               {todayLogsCount > 0
                 ? `${todayLogsCount}명이 오늘 운동을 인증했어요`
                 : "아직 오늘 인증한 사람이 없어요"}
             </p>
+            {!showFinance && todayAvatarLogs.length > 0 && (
+              <AvatarStack logs={todayAvatarLogs} totalCount={todayLogsCount} />
+            )}
           </div>
           <span className="shrink-0 rounded-full bg-brand-soft px-3 py-1.5 text-[12px] font-bold text-brand-strong">
             보기
           </span>
         </button>
+
+        {!showFinance && (
+          <WeeklyActivityBar weekDates={weekDates} logsByDate={homeLogsByDate} todayKey={tKey} />
+        )}
+
+        {!showFinance && recentFeedLogs.length > 0 && (
+          <RecentFeedPreview logs={recentFeedLogs} onSelect={setSelectedKey} />
+        )}
 
         {showFinance && (
           <>
@@ -256,7 +291,10 @@ export function Dashboard({
       {selectedKey && (
         <DayDrawer
           dateKey={selectedKey}
-          logs={logsByDate.get(selectedKey) ?? []}
+          // 달력에서 고른 날짜는 보통 logsByDate(현재 보고 있는 달)에 있지만, "오늘 인증
+          // 현황"이나 "최근 인증" 미리보기는 달력을 다른 달로 넘겨본 상태에서도 항상 오늘
+          // 기준 최신 데이터(homeLogsByDate)를 가리킬 수 있어 그 경우를 대비해 폴백한다.
+          logs={logsByDate.get(selectedKey) ?? homeLogsByDate.get(selectedKey) ?? []}
           currentUserId={userId}
           onClose={() => setSelectedKey(null)}
           isToday={selectedKey === tKey}
@@ -371,6 +409,135 @@ export function Dashboard({
           onClose={() => setShowSettlement(false)}
         />
       )}
+    </div>
+  );
+}
+
+/** "오늘 인증 현황" 카드 안에 보여주는, 오늘 인증한 사람들의 겹친 아바타 미리보기. */
+function AvatarStack({
+  logs,
+  totalCount,
+}: {
+  logs: WorkoutLogWithProfile[];
+  totalCount: number;
+}) {
+  const MAX_VISIBLE = 4;
+  const visible = logs.slice(0, MAX_VISIBLE);
+  const overflow = totalCount - visible.length;
+
+  return (
+    <div className="mt-2 flex items-center">
+      {visible.map((log, i) => (
+        <div
+          key={log.user_id}
+          className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full bg-brand-soft ring-2 ring-surface"
+          style={{ marginLeft: i === 0 ? 0 : -8 }}
+        >
+          {log.profile.avatar_url && (
+            <Image src={log.profile.avatar_url} alt="" fill sizes="24px" className="object-cover" />
+          )}
+        </div>
+      ))}
+      {overflow > 0 && (
+        <span
+          className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-muted text-[10px] font-bold text-muted ring-2 ring-surface"
+          style={{ marginLeft: -8 }}
+        >
+          +{overflow}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** 이번 주(월~일) 요일별 인증 인원수를 막대로 보여준다. */
+function WeeklyActivityBar({
+  weekDates,
+  logsByDate,
+  todayKey,
+}: {
+  weekDates: Date[];
+  logsByDate: Map<string, WorkoutLogWithProfile[]>;
+  todayKey: string;
+}) {
+  const counts = weekDates.map((date) => {
+    const key = toDateKey(date);
+    return { key, count: countUniquePeople(logsByDate.get(key) ?? []) };
+  });
+  const maxCount = Math.max(1, ...counts.map((c) => c.count));
+
+  return (
+    <div className="surface-card px-4 py-4">
+      <p className="text-[13px] font-semibold text-foreground">이번 주 활동</p>
+      <div className="mt-3 flex items-end justify-between gap-1.5">
+        {counts.map(({ key, count }, i) => {
+          const isToday = key === todayKey;
+          const isFuture = key > todayKey;
+          const heightPct = count > 0 ? Math.max(14, Math.round((count / maxCount) * 100)) : 6;
+          return (
+            <div key={key} className="flex flex-1 flex-col items-center gap-1.5">
+              <span className={`text-[11px] font-bold ${isToday ? "text-brand-strong" : "text-muted"}`}>
+                {count > 0 ? count : ""}
+              </span>
+              <div className="flex h-16 w-full items-end justify-center">
+                <div
+                  className={[
+                    "w-full max-w-[22px] rounded-full transition-all",
+                    isFuture || count === 0
+                      ? "bg-surface-muted"
+                      : isToday
+                        ? "bg-brand"
+                        : "bg-brand/50",
+                  ].join(" ")}
+                  style={{ height: `${heightPct}%` }}
+                />
+              </div>
+              <span className={`text-[11px] font-medium ${isToday ? "font-bold text-brand-strong" : "text-muted"}`}>
+                {WEEKDAY_LABELS[i]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** 가장 최근에 올라온 인증 기록 1~2건을 미리보기 카드로 보여준다. 누르면 그 날짜 기록을 연다. */
+function RecentFeedPreview({
+  logs,
+  onSelect,
+}: {
+  logs: WorkoutLogWithProfile[];
+  onSelect: (dateKey: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="px-1 text-[13px] font-semibold text-foreground">최근 인증</p>
+      <div className="flex flex-col gap-2">
+        {logs.map((log) => (
+          <button
+            key={log.id}
+            onClick={() => onSelect(log.log_date)}
+            className="surface-card flex items-center gap-3 p-2.5 text-left transition active:scale-[0.99]"
+          >
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-surface-muted">
+              {log.photo_urls[0] && (
+                <Image src={log.photo_urls[0]} alt="" fill sizes="56px" className="object-cover" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-[13px] font-semibold text-foreground">
+                  {log.profile.nickname}
+                </span>
+                <span className="shrink-0 text-[11px] text-muted">{formatTime(log.created_at)}</span>
+              </div>
+              <p className="mt-0.5 truncate text-[12px] text-muted">{log.memo || "오늘도 운동 완료!"}</p>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

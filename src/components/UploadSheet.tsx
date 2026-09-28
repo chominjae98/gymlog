@@ -8,8 +8,8 @@ import { formatDayTitle, nowInSeoul, toDateKey } from "@/lib/date";
 import { groupLogsByDate } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
 import { uploadWorkoutPhotos } from "@/lib/storage-upload";
-import { resizeImagesForUpload } from "@/lib/image-resize";
-import { hashFiles } from "@/lib/photo-hash";
+import { resizeImageForUpload } from "@/lib/image-resize";
+import { resizeAndHashFiles } from "@/lib/photo-hash";
 import { getExistingPhotoHashes } from "@/lib/duplicate-check";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -36,6 +36,9 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
   const [files, setFiles] = useState<File[]>([]);
   const [fileHashes, setFileHashes] = useState<string[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  // 방금 고른 사진이 리사이즈·해시 계산(약 1~2초) 되는 동안, 아무것도 안 보이면
+  // 마치 멈춘 것처럼 느껴져서 그 자리에 로딩 스켈레톤을 바로 보여준다.
+  const [pendingCount, setPendingCount] = useState(0);
   const [memo, setMemo] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,14 +82,18 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
     if (picked.length === 0) return;
-    const room = MAX_PHOTOS - files.length;
+    const room = MAX_PHOTOS - files.length - pendingCount;
     const accepted = picked.slice(0, room);
     e.target.value = ""; // 같은 파일 다시 선택 가능하도록
 
+    setPendingCount(accepted.length);
+    setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
+
     // 원본 그대로 미리보기/업로드하면 카메라 원본(수천 px, 수 MB)을 여러 장 한 번에
     // 디코딩하게 되어 화면이 잠깐 검게 깨지는 현상이 있었다. 화면에 보일 크기로 먼저 줄인다.
-    const resized = await resizeImagesForUpload(accepted);
-    const hashes = await hashFiles(resized);
+    // 파일별로 리사이즈가 끝나는 대로 바로 그 파일의 해시를 계산해(단계를 전부 기다렸다
+    // 다음 단계로 넘어가지 않고) 전체 대기 시간을 줄인다.
+    const { files: resized, hashes } = await resizeAndHashFiles(accepted, resizeImageForUpload);
 
     // 이미 올린 적 있는 사진(과거 기록 또는 이번에 이미 고른 사진)과 내용이 같으면
     // 조용히 걸러내고, 몇 장을 걸렀는지만 알려준다.
@@ -105,6 +112,7 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
       uniqueHashes.push(hash);
     });
 
+    setPendingCount(0);
     setFiles((prev) => [...prev, ...uniqueFiles]);
     setFileHashes((prev) => [...prev, ...uniqueHashes]);
     setPreviews((prev) => [...prev, ...uniqueFiles.map((f) => URL.createObjectURL(f))]);
@@ -112,8 +120,8 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
     // 단 이번에 방 부족/중복으로 일부가 걸러졌다면 그 사실을 대신 알려준다.
     if (duplicateCount > 0) {
       setError(`이미 올렸던 사진과 같은 사진 ${duplicateCount}장은 제외했어요.`);
-    } else {
-      setError(picked.length > room ? `사진은 최대 ${MAX_PHOTOS}장까지만 첨부할 수 있어요.` : null);
+    } else if (picked.length <= room) {
+      setError(null);
     }
   }
 
@@ -246,7 +254,7 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
           className="hidden"
         />
 
-        {previews.length === 0 ? (
+        {previews.length === 0 && pendingCount === 0 ? (
           <button
             onClick={() => inputRef.current?.click()}
             className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-border bg-surface-muted"
@@ -270,7 +278,13 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
                 </button>
               </div>
             ))}
-            {previews.length < MAX_PHOTOS && (
+            {Array.from({ length: pendingCount }).map((_, i) => (
+              <div
+                key={`pending-${i}`}
+                className="relative aspect-square animate-pulse overflow-hidden rounded-2xl bg-surface-muted"
+              />
+            ))}
+            {previews.length + pendingCount < MAX_PHOTOS && (
               <button
                 onClick={() => inputRef.current?.click()}
                 className="flex aspect-square items-center justify-center rounded-2xl border-2 border-dashed border-border bg-surface-muted text-muted"

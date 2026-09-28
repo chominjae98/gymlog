@@ -94,10 +94,8 @@ export function DayDrawer({
         </div>
 
         {logs.length === 0 ? (
-          <div className="flex min-h-[52dvh] flex-col items-center justify-center gap-5 px-8 pb-12 text-center">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand-soft text-[44px]">
-              🏃
-            </div>
+          <div className="flex min-h-[52dvh] flex-col items-center justify-center gap-4 px-8 pb-12 text-center">
+            <span className="text-[52px] leading-none">🏃</span>
             <div className="flex flex-col gap-2">
               <p className="text-[15px] font-semibold text-foreground">
                 {isToday ? "오늘 첫 인증의 주인공이 되어보세요" : "이 날은 아무도 인증하지 않았어요"}

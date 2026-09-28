@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Trophy, Users } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
@@ -48,15 +48,25 @@ type Tab = "home" | "rooms" | "leaderboard";
 export function AppShell(props: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("home");
+  // router.push만으로도 이 페이지(검색 파라미터에 따라 서버 데이터가 달라지는 동적 라우트)는
+  // 항상 최신 데이터를 새로 받아온다. 예전엔 여기서 router.refresh()도 같이 불러서
+  // 서버 왕복이 두 번(=지연이 거의 두 배) 일어나고 있었다 — 방 전환이 유독 느리게
+  // 느껴진 원인. isPending으로 그 왕복이 끝나기 전까지 즉시 로딩 피드백을 보여준다.
+  const [isPending, startTransition] = useTransition();
+  const [pendingRoomId, setPendingRoomId] = useState<string | null>(null);
 
   function selectRoom(roomId: string) {
-    router.push(`/?room=${roomId}`);
-    router.refresh();
+    setPendingRoomId(roomId);
+    startTransition(() => {
+      router.push(`/?room=${roomId}`);
+    });
   }
 
   function clearRoomSelection() {
-    router.push("/");
-    router.refresh();
+    setPendingRoomId(null);
+    startTransition(() => {
+      router.push("/");
+    });
   }
 
   return (
@@ -93,6 +103,8 @@ export function AppShell(props: Props) {
           joinCode={props.joinCode}
           onSelectRoom={selectRoom}
           onRoomMutated={() => router.refresh()}
+          isNavigating={isPending}
+          navigatingRoomId={pendingRoomId}
         />
       )}
 
