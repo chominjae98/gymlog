@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Home, Trophy } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
 import { LeaderboardView } from "@/components/LeaderboardView";
-import { RoomOnboarding } from "@/components/RoomOnboarding";
+import { EmptyHome } from "@/components/EmptyHome";
 import { RoomSwitcherSheet } from "@/components/RoomSwitcherSheet";
 import type {
   FineExceptionWithVotes,
@@ -65,7 +65,7 @@ export function AppShell(props: Props) {
             initialExceptions={props.initialExceptions}
           />
         ) : (
-          <RoomOnboarding initialCode={props.joinCode} />
+          <EmptyHome profile={props.profile} joinCode={props.joinCode} />
         )
       ) : (
         <LeaderboardView currentUserId={props.userId} />
