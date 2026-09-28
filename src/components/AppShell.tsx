@@ -55,8 +55,10 @@ export function AppShell(props: Props) {
             userId={props.userId}
             profile={props.profile}
             room={props.room}
+            rooms={props.rooms}
             roomMemberCount={props.roomMemberCount}
             onSwitchRoomClick={() => setShowRoomSwitcher(true)}
+            onRoomCreated={switchRoom}
             initialMonthLogs={props.initialMonthLogs}
             initialWeeklyProgress={props.initialWeeklyProgress}
             initialMyGoal={props.initialMyGoal}

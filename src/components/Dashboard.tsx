@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Receipt } from "lucide-react";
+import { Camera, Plus, Receipt, Users } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
@@ -14,6 +14,7 @@ import { WeeklyGoalSheet } from "@/components/WeeklyGoalSheet";
 import { UploadSheet } from "@/components/UploadSheet";
 import { HeatmapSheet } from "@/components/HeatmapSheet";
 import { SettlementSheet } from "@/components/SettlementSheet";
+import { CreateRoomSheet } from "@/components/CreateRoomSheet";
 import {
   computeWeeklyStatus,
   countUniquePeople,
@@ -34,8 +35,10 @@ type Props = {
   userId: string;
   profile: Profile;
   room: Room;
+  rooms: Room[];
   roomMemberCount: number;
   onSwitchRoomClick: () => void;
+  onRoomCreated: (roomId: string) => void;
   initialMonthLogs: WorkoutLogWithProfile[];
   initialWeeklyProgress: WeeklyProgress[];
   initialMyGoal: number | null;
@@ -44,12 +47,21 @@ type Props = {
   initialExceptions: FineExceptionWithVotes[];
 };
 
+/** 참여 중인 방들을 요약 한 줄로 보여주기 위한 미리보기 문구. */
+function formatRoomsPreview(rooms: Room[]): string {
+  if (rooms.length === 0) return "참여 중인 방이 없어요";
+  if (rooms.length <= 2) return rooms.map((r) => r.name).join(", ");
+  return `${rooms[0].name}, ${rooms[1].name} 외 ${rooms.length - 2}개`;
+}
+
 export function Dashboard({
   userId,
   profile,
   room,
+  rooms,
   roomMemberCount,
   onSwitchRoomClick,
+  onRoomCreated,
   initialMonthLogs,
   initialWeeklyProgress,
   initialMyGoal,
@@ -72,6 +84,8 @@ export function Dashboard({
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
   const [showExceptionRequest, setShowExceptionRequest] = useState(false);
+  const [showFabMenu, setShowFabMenu] = useState(false);
+  const [showCreateRoom, setShowCreateRoom] = useState(false);
 
   // 서버가 새로 내려준 값(props)을 기본값 삼아 로컬 상태로 들고 있다가,
   // 사용자가 방금 한 행동(목표 변경 등)을 router.refresh() 응답을 기다리지 않고
@@ -195,6 +209,24 @@ export function Dashboard({
         </button>
 
         <button
+          onClick={onSwitchRoomClick}
+          className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft">
+              <Users size={18} className="text-brand-strong" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-foreground">참여 중인 방</p>
+              <p className="mt-0.5 truncate text-[12px] text-muted">{formatRoomsPreview(rooms)}</p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
+            보기
+          </span>
+        </button>
+
+        <button
           onClick={() => setSelectedKey(tKey)}
           className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
         >
@@ -233,16 +265,59 @@ export function Dashboard({
         <FineSection progress={weeklyProgress} weeklyFine={weeklyFine} />
       </main>
 
-      <button
-        onClick={() => {
-          setUploadDateKey(tKey);
-          setShowUpload(true);
-        }}
-        className="safe-bottom fixed bottom-24 right-5 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-black/25 transition active:scale-95"
-        aria-label="운동 인증하기"
-      >
-        <Plus size={28} />
-      </button>
+      {showFabMenu && (
+        <button
+          aria-label="닫기"
+          onClick={() => setShowFabMenu(false)}
+          className="fixed inset-0 z-[35] bg-black/10 backdrop-blur-[1px]"
+        />
+      )}
+
+      <div className="safe-bottom fixed bottom-24 right-5 z-40 flex flex-col items-end gap-3">
+        {showFabMenu && (
+          <>
+            <button
+              onClick={() => {
+                setShowFabMenu(false);
+                setShowCreateRoom(true);
+              }}
+              className="animate-fade-up flex items-center gap-3 rounded-full bg-surface py-2 pr-2 pl-4 shadow-[var(--shadow-pop)] transition active:scale-95"
+            >
+              <span className="text-[13px] font-semibold text-foreground">방 생성하기</span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-muted text-foreground">
+                <Users size={18} />
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowFabMenu(false);
+                setUploadDateKey(tKey);
+                setShowUpload(true);
+              }}
+              className="animate-fade-up flex items-center gap-3 rounded-full bg-surface py-2 pr-2 pl-4 shadow-[var(--shadow-pop)] transition active:scale-95"
+              style={{ animationDelay: "40ms" }}
+            >
+              <span className="text-[13px] font-semibold text-foreground">운동 인증하기</span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
+                <Camera size={18} />
+              </span>
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={() => setShowFabMenu((v) => !v)}
+          aria-label={showFabMenu ? "닫기" : "추가하기"}
+          aria-expanded={showFabMenu}
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-black/25 transition active:scale-95"
+        >
+          <Plus
+            size={28}
+            className={`transition-transform duration-200 ${showFabMenu ? "rotate-45" : ""}`}
+          />
+        </button>
+      </div>
 
       {selectedKey && (
         <DayDrawer
@@ -353,6 +428,16 @@ export function Dashboard({
       )}
 
       {showHeatmap && <HeatmapSheet userId={userId} onClose={() => setShowHeatmap(false)} />}
+
+      {showCreateRoom && (
+        <CreateRoomSheet
+          onClose={() => setShowCreateRoom(false)}
+          onCreated={(newRoomId) => {
+            setShowCreateRoom(false);
+            onRoomCreated(newRoomId);
+          }}
+        />
+      )}
 
       {showSettlement && (
         <SettlementSheet
