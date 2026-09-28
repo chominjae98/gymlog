@@ -16,6 +16,19 @@
   --warn: #ff6a4d;
   --warn-soft: #ffece7;
 
+  /* 방마다 하나씩 배정되는 식별 색상 (그라데이션 없이, 방을 구분하기 위한 용도).
+     "참여 중인 방" 목록/관리 화면과 지금 보고 있는 방 표시에 쓰인다. */
+  --room-blue: #2f6fed;
+  --room-blue-soft: #e8f0ff;
+  --room-purple: #8452e0;
+  --room-purple-soft: #f1eafd;
+  --room-amber: #b5790a;
+  --room-amber-soft: #fdf1de;
+  --room-rose: #d1447a;
+  --room-rose-soft: #fdeaf1;
+  --room-teal: #0f8a82;
+  --room-teal-soft: #e3f6f4;
+
   --shadow-card: 0 1px 1px rgba(27, 29, 26, 0.02), 0 2px 6px -2px rgba(27, 29, 26, 0.05), 0 16px 32px -16px rgba(27, 29, 26, 0.14);
   --shadow-soft: 0 1px 2px rgba(27, 29, 26, 0.04), 0 4px 12px -6px rgba(27, 29, 26, 0.1);
   --shadow-pop: 0 4px 10px -2px rgba(27, 29, 26, 0.08), 0 24px 48px -20px rgba(27, 29, 26, 0.22);
@@ -37,6 +50,17 @@
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
 
+  --color-room-blue: var(--room-blue);
+  --color-room-blue-soft: var(--room-blue-soft);
+  --color-room-purple: var(--room-purple);
+  --color-room-purple-soft: var(--room-purple-soft);
+  --color-room-amber: var(--room-amber);
+  --color-room-amber-soft: var(--room-amber-soft);
+  --color-room-rose: var(--room-rose);
+  --color-room-rose-soft: var(--room-rose-soft);
+  --color-room-teal: var(--room-teal);
+  --color-room-teal-soft: var(--room-teal-soft);
+
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif;
 }
 
@@ -57,6 +81,17 @@
 
   --warn: #ff8468;
   --warn-soft: #3a231d;
+
+  --room-blue: #7ba4ff;
+  --room-blue-soft: #1c2a44;
+  --room-purple: #b79bf5;
+  --room-purple-soft: #2a2140;
+  --room-amber: #e2b25c;
+  --room-amber-soft: #3a2d14;
+  --room-rose: #ec8fb2;
+  --room-rose-soft: #3a1f2a;
+  --room-teal: #5cd0c6;
+  --room-teal-soft: #103430;
 
   --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.15), 0 2px 6px -2px rgba(0, 0, 0, 0.25), 0 16px 32px -16px rgba(0, 0, 0, 0.55);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 12px -6px rgba(0, 0, 0, 0.35);

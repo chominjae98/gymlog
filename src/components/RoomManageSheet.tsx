@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Check, LogOut, Share2, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoomMembers, leaveRoom, type RoomMemberProfile } from "@/lib/rooms-data";
+import { getRoomAccentClasses } from "@/lib/room-colors";
 import { shareRoomInvite } from "@/lib/share";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -24,6 +25,7 @@ export function RoomManageSheet({ room, isActive, onClose, onSwitchClick, onLeft
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
+  const accent = getRoomAccentClasses(room.id);
 
   const [members, setMembers] = useState<RoomMemberProfile[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -73,7 +75,16 @@ export function RoomManageSheet({ room, isActive, onClose, onSwitchClick, onLeft
       <div className="animate-modal-pop relative z-10 flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-[28px] bg-background shadow-[var(--shadow-pop)]">
         <div className="shrink-0 px-5 pb-3 pt-5">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="truncate text-[17px] font-bold text-foreground">{room.name}</h3>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${accent.soft}`}
+              >
+                <span className={`text-[14px] font-bold ${accent.strong}`}>
+                  {room.name.charAt(0)}
+                </span>
+              </span>
+              <h3 className="truncate text-[17px] font-bold text-foreground">{room.name}</h3>
+            </div>
             <button
               onClick={onClose}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-muted"

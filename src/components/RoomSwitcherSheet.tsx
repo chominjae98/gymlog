@@ -5,6 +5,7 @@ import { Check, Plus, Settings, X } from "lucide-react";
 import { CreateRoomSheet } from "@/components/CreateRoomSheet";
 import { JoinRoomSheet } from "@/components/JoinRoomSheet";
 import { RoomManageSheet } from "@/components/RoomManageSheet";
+import { getRoomAccentClasses } from "@/lib/room-colors";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import type { Room } from "@/types/database";
@@ -54,12 +55,13 @@ export function RoomSwitcherSheet({
         <ul className="flex flex-col gap-1.5">
           {rooms.map((room) => {
             const active = room.id === activeRoomId;
+            const accent = getRoomAccentClasses(room.id);
             return (
               <li
                 key={room.id}
                 className={[
-                  "flex items-center gap-2 rounded-2xl px-3.5 py-3 transition",
-                  active ? "bg-brand-soft" : "bg-surface-muted",
+                  "flex items-center gap-2.5 rounded-2xl px-3 py-2.5 transition",
+                  active ? accent.soft : "bg-surface-muted",
                 ].join(" ")}
               >
                 <button
@@ -67,15 +69,19 @@ export function RoomSwitcherSheet({
                     onSelectRoom(room.id);
                     onClose();
                   }}
-                  className="flex flex-1 items-center gap-2 text-left"
+                  className="flex flex-1 items-center gap-2.5 text-left"
                 >
                   <span
-                    className={[
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                      active ? "bg-brand text-white" : "border border-border",
-                    ].join(" ")}
+                    className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${accent.soft}`}
                   >
-                    {active && <Check size={12} />}
+                    <span className={`text-[14px] font-bold ${accent.strong}`}>
+                      {room.name.charAt(0)}
+                    </span>
+                    {active && (
+                      <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-white ring-2 ring-background">
+                        <Check size={10} />
+                      </span>
+                    )}
                   </span>
                   <span className="truncate text-[14px] font-semibold text-foreground">
                     {room.name}

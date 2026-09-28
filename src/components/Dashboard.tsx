@@ -15,6 +15,7 @@ import { UploadSheet } from "@/components/UploadSheet";
 import { HeatmapSheet } from "@/components/HeatmapSheet";
 import { SettlementSheet } from "@/components/SettlementSheet";
 import { CreateRoomSheet } from "@/components/CreateRoomSheet";
+import { getRoomAccentClasses } from "@/lib/room-colors";
 import {
   computeWeeklyStatus,
   countUniquePeople,
@@ -47,13 +48,6 @@ type Props = {
   initialExceptions: FineExceptionWithVotes[];
 };
 
-/** 참여 중인 방들을 요약 한 줄로 보여주기 위한 미리보기 문구. */
-function formatRoomsPreview(rooms: Room[]): string {
-  if (rooms.length === 0) return "참여 중인 방이 없어요";
-  if (rooms.length <= 2) return rooms.map((r) => r.name).join(", ");
-  return `${rooms[0].name}, ${rooms[1].name} 외 ${rooms.length - 2}개`;
-}
-
 export function Dashboard({
   userId,
   profile,
@@ -70,6 +64,7 @@ export function Dashboard({
   initialExceptions,
 }: Props) {
   const roomId = room.id;
+  const roomAccent = getRoomAccentClasses(roomId);
   const router = useRouter();
   const today = nowInSeoul();
 
@@ -211,12 +206,20 @@ export function Dashboard({
           className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft">
-              <Users size={18} className="text-brand-strong" />
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${roomAccent.soft}`}
+            >
+              <span className={`text-[15px] font-bold ${roomAccent.strong}`}>
+                {room.name.charAt(0)}
+              </span>
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-foreground">참여 중인 방</p>
-              <p className="mt-0.5 truncate text-[12px] text-muted">{formatRoomsPreview(rooms)}</p>
+              <p className="truncate text-[13px] font-semibold text-foreground">{room.name}</p>
+              <p className="mt-0.5 truncate text-[12px] text-muted">
+                {rooms.length > 1
+                  ? `지금 보고 있는 방 · 외 ${rooms.length - 1}개 참여 중`
+                  : "지금 보고 있는 방"}
+              </p>
             </div>
           </div>
           <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
