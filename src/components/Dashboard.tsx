@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Flame, Plus, Receipt, Target } from "lucide-react";
+import { Flame, Plus, Receipt, Send, Target } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
@@ -24,6 +24,7 @@ import {
   uniqueLogsByUser,
 } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
+import { buildTossTransferLink } from "@/lib/toss-transfer";
 import { formatMonthTitle, isSameMonthGuard, nowInSeoul } from "@/lib/date";
 import type {
   FineExceptionWithVotes,
@@ -121,6 +122,14 @@ export function Dashboard({
       ? [optimisticLog, ...baseMonthLogs]
       : baseMonthLogs;
 
+  // 정산 요약 카드 바로 아래 "벌금 내러가기" 버튼용 — 방에 등록된 정산 계좌로,
+  // 이 방의 벌금 단가(weeklyFine)를 채운 토스 송금 화면을 바로 연다.
+  function handleGoPayFine() {
+    if (!room.settlement_bank || !room.settlement_account_no) return;
+    const link = buildTossTransferLink(room.settlement_bank, room.settlement_account_no, weeklyFine);
+    if (link) window.location.assign(link);
+  }
+
   async function handleMonthChange(next: Date) {
     setMonthDate(next);
     if (isSameMonthGuard(next, today)) {
@@ -215,6 +224,16 @@ export function Dashboard({
             <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
               보기
             </span>
+          </button>
+        )}
+
+        {showFinance && room.settlement_bank && room.settlement_account_no && weeklyFine > 0 && (
+          <button
+            onClick={handleGoPayFine}
+            className="flex items-center justify-center gap-1.5 rounded-2xl bg-[#0064FF] py-3.5 text-[14px] font-semibold text-white shadow-[var(--shadow-soft)] transition active:scale-[0.98]"
+          >
+            <Send size={15} />
+            벌금 내러가기
           </button>
         )}
 
