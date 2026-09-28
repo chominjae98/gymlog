@@ -104,7 +104,13 @@ export default async function Home({
     return <LoginScreen authError={params?.auth_error === "1"} />;
   }
 
-  const rooms = await getMyRooms(supabase, user.id);
+  // getProfile은 rooms 목록과 무관하게 user.id만 있으면 바로 시작할 수 있는데,
+  // 예전엔 getMyRooms가 끝나기를 기다렸다가 나중에야 시작했다 — 그만큼 불필요하게
+  // 순차적으로 지연되던 부분이라 둘을 바로 병렬로 돌린다.
+  const [rooms, profile] = await Promise.all([
+    getMyRooms(supabase, user.id),
+    getProfile(supabase, user.id),
+  ]);
   // "홈" 탭은 항상 이 공용 방(모든 신규 가입자가 자동으로 속함)을 보여준다 —
   // 로그인한 전체 이용자가 함께 보는 화면.
   const defaultRoom = rooms.find((r) => r.is_default) ?? null;
@@ -124,9 +130,13 @@ export default async function Home({
   // 홈 방이 없는(설정 누락 등) 예외적인 경우엔 그 방 자기 자신을 기준으로 폴백한다.
   const goalRoomId = defaultRoom?.id ?? selectedRoom?.id ?? null;
 
-  const [profile, defaultRoomData, selectedRoomData] = await Promise.all([
-    getProfile(supabase, user.id),
-    defaultRoom ? getHomeBundle(supabase, user.id, defaultRoom.id, today) : null,
+  // 특정 방을 보러 들어온 요청(?room=)이면 홈 데이터 묶음(쿼리 7~8개, 홈 방의 전체
+  // 멤버 기준 주간 리포트까지 계산)은 이번엔 필요 없으니 아예 조회하지 않는다 —
+  // 어차피 안 보여줄 화면을 매번 다시 계산하던 게 방 전환 지연의 가장 큰 원인이었다.
+  // 클라이언트(AppShell)가 마지막으로 받은 홈 데이터를 그대로 들고 있다가, 사용자가
+  // 실제로 홈 탭을 보면 그때 브라우저에서 직접 받아오는 걸로 메꾼다.
+  const [defaultRoomData, selectedRoomData] = await Promise.all([
+    defaultRoom && !selectedRoom ? getHomeBundle(supabase, user.id, defaultRoom.id, today) : null,
     selectedRoom && goalRoomId
       ? getRoomDashboardBundle(
           supabase,

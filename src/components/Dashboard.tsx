@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Flame, Plus, Receipt, Send, Target } from "lucide-react";
+import { Plus, Receipt, Send } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
@@ -15,6 +15,7 @@ import { WeeklyGoalSheet } from "@/components/WeeklyGoalSheet";
 import { UploadSheet } from "@/components/UploadSheet";
 import { HeatmapSheet } from "@/components/HeatmapSheet";
 import { SettlementSheet } from "@/components/SettlementSheet";
+import { WeeklyReport } from "@/components/WeeklyReport";
 import { getRoomAccentClasses } from "@/lib/room-colors";
 import {
   computeWeeklyStatus,
@@ -459,111 +460,3 @@ function AvatarStack({
   );
 }
 
-/**
- * 홈 화면 전용 "주간 리포트". 홈은 전체 이용자가 함께 기록을 올리는 곳이므로,
- * 개인 통계 대신 "이번 주에 가장 많이 운동한 사람"과 "목표 달성률이 높은 사람"(예:
- * 주 4일 목표에 3일 가면 75%, 4일 다 채우면 100%, 5일이면 125% — 초과분도 그대로
- * 반영한다)을 전체 이용자 기준으로 보여준다.
- */
-function WeeklyReport({
-  progress,
-  currentUserId,
-}: {
-  progress: WeeklyProgress[];
-  currentUserId: string;
-}) {
-  const mostWorkouts = [...progress]
-    .filter((p) => p.achievedDays > 0)
-    .sort((a, b) => b.achievedDays - a.achievedDays)
-    .slice(0, 3);
-
-  const goalAchievers = progress
-    .filter((p) => p.targetDays != null && p.targetDays > 0)
-    .map((p) => ({ ...p, rate: p.achievedDays / p.targetDays! }))
-    .sort((a, b) => b.rate - a.rate || b.achievedDays - a.achievedDays)
-    .slice(0, 3);
-
-  return (
-    <div className="surface-card px-4 py-3.5">
-      <p className="text-[13px] font-semibold text-foreground">주간 리포트</p>
-
-      {mostWorkouts.length === 0 && goalAchievers.length === 0 ? (
-        <p className="mt-0.5 text-[12px] text-muted">
-          아직 이번 주 기록이 없어요. 가장 먼저 운동을 인증해 보세요!
-        </p>
-      ) : (
-        <div className="mt-3 flex flex-col gap-4">
-          {mostWorkouts.length > 0 && (
-            <div>
-              <div className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
-                <Flame size={13} className="text-warn" />
-                가장 많이 운동한 사람
-              </div>
-              <ul className="flex flex-col gap-2.5">
-                {mostWorkouts.map((p, i) => (
-                  <ReportRow
-                    key={p.profile.id}
-                    rank={i + 1}
-                    nickname={p.profile.nickname}
-                    avatarUrl={p.profile.avatar_url}
-                    isMe={p.profile.id === currentUserId}
-                    stat={`${p.achievedDays}일`}
-                  />
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {goalAchievers.length > 0 && (
-            <div>
-              <div className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
-                <Target size={13} className="text-brand-strong" />
-                목표 달성률 TOP
-              </div>
-              <ul className="flex flex-col gap-2.5">
-                {goalAchievers.map((p, i) => (
-                  <ReportRow
-                    key={p.profile.id}
-                    rank={i + 1}
-                    nickname={p.profile.nickname}
-                    avatarUrl={p.profile.avatar_url}
-                    isMe={p.profile.id === currentUserId}
-                    stat={`${Math.round(p.rate * 100)}%`}
-                  />
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ReportRow({
-  rank,
-  nickname,
-  avatarUrl,
-  isMe,
-  stat,
-}: {
-  rank: number;
-  nickname: string;
-  avatarUrl: string | null;
-  isMe: boolean;
-  stat: string;
-}) {
-  return (
-    <li className="flex items-center gap-2.5">
-      <span className="w-4 shrink-0 text-center text-[12px] font-bold text-muted">{rank}</span>
-      <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full bg-surface-muted">
-        {avatarUrl && <Image src={avatarUrl} alt="" fill sizes="28px" className="object-cover" />}
-      </div>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
-        {nickname}
-        {isMe && <span className="ml-1.5 text-[11px] font-medium text-brand-strong">나</span>}
-      </span>
-      <span className="shrink-0 text-[12.5px] font-bold text-foreground">{stat}</span>
-    </li>
-  );
-}

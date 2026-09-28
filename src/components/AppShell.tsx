@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Trophy, Users } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
 import { LeaderboardView } from "@/components/LeaderboardView";
 import { RoomsTab } from "@/components/RoomsTab";
+import { createClient } from "@/lib/supabase/client";
+import { getMonthLogs, getMyWeeklyGoal, getWeeklyProgress } from "@/lib/dashboard-data";
+import { getRoomMemberCount } from "@/lib/fine-exceptions";
+import { nowInSeoul } from "@/lib/date";
 import type {
   FineExceptionWithVotes,
   Profile,
@@ -59,6 +63,41 @@ export function AppShell(props: Props) {
   // null로 두어 목표 설정 버튼 자체를 숨긴다.
   const goalRoomId = props.defaultRoom?.id ?? null;
 
+  // 특정 방을 보는 중(?room=)엔 서버가 홈 데이터 묶음(월별 기록·주간 리포트 등,
+  // 쿼리 7~8개)을 아예 조회하지 않는다(page.tsx 참고) — 어차피 안 보여줄 화면을
+  // 방 전환마다 매번 다시 계산하던 게 "방 들어갈 때 2초" 지연의 가장 큰 원인이었다.
+  // 그래서 마지막으로 받은 홈 데이터를 여기 들고 있다가, 서버가 이번엔 생략했으면
+  // (null) 그대로 유지하고, 새로 받으면(홈을 볼 때) 최신 값으로 교체한다.
+  const [defaultRoomData, setDefaultRoomData] = useState(props.defaultRoomData);
+  const [prevPropsDefaultRoomData, setPrevPropsDefaultRoomData] = useState(props.defaultRoomData);
+  if (props.defaultRoomData !== prevPropsDefaultRoomData) {
+    setPrevPropsDefaultRoomData(props.defaultRoomData);
+    if (props.defaultRoomData !== null) setDefaultRoomData(props.defaultRoomData);
+  }
+
+  // 위에서 서버가 홈 데이터를 생략했는데(방 화면으로 바로 들어온 딥링크 등) 캐시된
+  // 값도 전혀 없는 드문 경우엔, 홈 탭을 실제로 볼 때 브라우저에서 직접 한 번 받아온다
+  // (그렇지 않으면 "불러오는 중..."에서 영영 멈춰버림).
+  useEffect(() => {
+    if (defaultRoomData || !props.defaultRoom || tab !== "home") return;
+    let cancelled = false;
+    const supabase = createClient();
+    const today = nowInSeoul();
+    const roomId = props.defaultRoom.id;
+    Promise.all([
+      getMonthLogs(supabase, today, roomId),
+      getWeeklyProgress(supabase, today, roomId),
+      getMyWeeklyGoal(supabase, props.userId, today, roomId),
+      getRoomMemberCount(supabase, roomId),
+    ]).then(([monthLogs, weeklyProgress, myGoal, roomMemberCount]) => {
+      if (cancelled) return;
+      setDefaultRoomData({ monthLogs, weeklyProgress, myGoal, finePerDay: 0, exceptions: [], roomMemberCount });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [defaultRoomData, props.defaultRoom, props.userId, tab]);
+
   function selectRoom(roomId: string) {
     setPendingRoomId(roomId);
     startTransition(() => {
@@ -76,21 +115,25 @@ export function AppShell(props: Props) {
   return (
     <div className="min-h-dvh bg-background">
       {tab === "home" &&
-        (props.defaultRoom && props.defaultRoomData ? (
+        (props.defaultRoom && defaultRoomData ? (
           <Dashboard
             userId={props.userId}
             profile={props.profile}
             room={props.defaultRoom}
             showFinance={false}
             goalRoomId={goalRoomId}
-            roomMemberCount={props.defaultRoomData.roomMemberCount}
-            initialMonthLogs={props.defaultRoomData.monthLogs}
-            initialWeeklyProgress={props.defaultRoomData.weeklyProgress}
-            initialMyGoal={props.defaultRoomData.myGoal}
-            weeklyFine={props.defaultRoomData.finePerDay}
+            roomMemberCount={defaultRoomData.roomMemberCount}
+            initialMonthLogs={defaultRoomData.monthLogs}
+            initialWeeklyProgress={defaultRoomData.weeklyProgress}
+            initialMyGoal={defaultRoomData.myGoal}
+            weeklyFine={defaultRoomData.finePerDay}
             weekStart={props.weekStart}
-            initialExceptions={props.defaultRoomData.exceptions}
+            initialExceptions={defaultRoomData.exceptions}
           />
+        ) : props.defaultRoom ? (
+          <div className="flex min-h-dvh items-center justify-center px-6 text-center text-[13px] text-muted">
+            불러오는 중...
+          </div>
         ) : (
           <div className="flex min-h-dvh items-center justify-center px-6 text-center text-[13px] text-muted">
             공용 홈 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.

@@ -79,15 +79,14 @@ export function DayDrawer({
               <h3 className="text-[19px] font-bold tracking-tight text-foreground">
                 {formatDayTitle(date)}
               </h3>
-              <p className="mt-0.5 text-[13px] text-muted">
-                {peopleCount > 0
-                  ? `${peopleCount}명이 운동을 인증했어요 🔥`
-                  : "아직 인증한 사람이 없어요"}
-              </p>
+              {peopleCount > 0 && (
+                <p className="mt-0.5 text-[13px] text-muted">{peopleCount}명이 운동을 인증했어요 🔥</p>
+              )}
             </div>
             <button
               onClick={onClose}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-muted transition hover:bg-border/60 active:scale-95"
+              aria-label="닫기"
+              className="flex h-9 w-9 shrink-0 items-center justify-center text-muted transition active:scale-95"
             >
               <X size={18} />
             </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Pencil, Send, Trash2, X } from "lucide-react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { addComment, deleteComment, getCommentsForLogs, updateComment } from "@/lib/social-data";
 import { useToast } from "@/components/ToastProvider";
@@ -112,7 +112,7 @@ export function PostSocialPanel({
           )}
           {visibleComments.map((c) =>
             editingId === c.id ? (
-              <div key={c.id} className="flex items-center gap-2 py-0.5">
+              <div key={c.id} className="flex items-center gap-2">
                 <input
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
@@ -122,7 +122,7 @@ export function PostSocialPanel({
                   }}
                   maxLength={300}
                   autoFocus
-                  className="min-w-0 flex-1 rounded-full bg-surface-muted px-3 py-1.5 text-[12.5px] text-foreground outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-border px-2.5 py-1.5 text-[12.5px] text-foreground outline-none"
                 />
                 <button
                   onClick={() => handleSaveEditComment(c.id)}
@@ -141,13 +141,13 @@ export function PostSocialPanel({
                 </button>
               </div>
             ) : (
-              <div key={c.id} className="flex items-start gap-2">
-                <div className="min-w-0 flex-1 rounded-2xl bg-surface-muted px-3.5 py-2 text-[12.5px] leading-relaxed">
+              <div key={c.id} className="flex items-start gap-2 text-[12.5px] leading-relaxed">
+                <span className="min-w-0 flex-1 break-words">
                   <span className="font-semibold text-foreground">{c.profile.nickname}</span>{" "}
-                  <span className="break-words text-foreground/85">{c.body}</span>
-                </div>
+                  <span className="text-foreground/85">{c.body}</span>
+                </span>
                 {c.user_id === currentUserId && (
-                  <div className="flex shrink-0 items-center gap-1 pt-2">
+                  <div className="flex shrink-0 items-center gap-1.5">
                     <button
                       onClick={() => startEditComment(c)}
                       aria-label="댓글 수정"
@@ -170,7 +170,12 @@ export function PostSocialPanel({
         </div>
       )}
 
-      <div className={["flex items-center gap-2", comments.length > 0 && "mt-2.5"].filter(Boolean).join(" ")}>
+      <div
+        className={[
+          "flex items-center gap-2.5",
+          comments.length > 0 ? "mt-3 border-t border-border pt-3" : "",
+        ].join(" ")}
+      >
         <input
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
@@ -180,15 +185,14 @@ export function PostSocialPanel({
           maxLength={300}
           placeholder={isOptimistic ? "업로드 완료 후 댓글을 남길 수 있어요" : "댓글 달기..."}
           disabled={isOptimistic}
-          className="min-w-0 flex-1 rounded-full bg-surface-muted px-3.5 py-2.5 text-[12.5px] text-foreground outline-none disabled:opacity-60"
+          className="min-w-0 flex-1 bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-muted disabled:opacity-60"
         />
         <button
           onClick={handleAddComment}
           disabled={posting || isOptimistic || !commentText.trim()}
-          aria-label="댓글 등록"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-white transition active:scale-90 disabled:opacity-40"
+          className="shrink-0 text-[12.5px] font-bold text-brand-strong transition active:scale-95 disabled:opacity-40"
         >
-          <Send size={14} />
+          게시
         </button>
       </div>
     </div>
