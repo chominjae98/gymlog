@@ -103,18 +103,31 @@ create table if not exists public.room_members (
   primary key (room_id, user_id)
 );
 
+-- room_members는 자기 자신을 참조하는 정책(아래)을 가져야 하는데, RLS가 걸린 테이블을
+-- 그 테이블 자신의 정책 안에서 그대로 서브쿼리하면 Postgres가 "infinite recursion
+-- detected in policy"(42P17)로 거부한다. security definer 함수로 감싸서 그 안의
+-- 조회만 RLS를 우회하게 하면 재귀 없이 같은 검사를 할 수 있다 — Supabase가 권장하는
+-- 표준 우회법. rooms/weekly_goals/workout_logs/fine_exceptions 등 방 멤버십을 확인하는
+-- 모든 정책이 이 함수를 통해야 한다(직접 room_members를 서브쿼리하면 안 됨).
+create or replace function public.is_room_member(target_room_id uuid)
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.room_members
+    where room_id = target_room_id and user_id = auth.uid()
+  );
+$$;
+
 alter table public.rooms enable row level security;
 
 drop policy if exists "rooms are viewable by their members" on public.rooms;
 create policy "rooms are viewable by their members"
   on public.rooms for select
   to authenticated
-  using (
-    exists (
-      select 1 from public.room_members rm
-      where rm.room_id = rooms.id and rm.user_id = auth.uid()
-    )
-  );
+  using (public.is_room_member(id));
 
 -- 실제 생성은 아래 create_room() 함수를 통해서만 한다. 이 정책은 최소한의 안전장치.
 drop policy if exists "user can create room as self" on public.rooms;
@@ -129,12 +142,7 @@ drop policy if exists "members can view their room roster" on public.room_member
 create policy "members can view their room roster"
   on public.room_members for select
   to authenticated
-  using (
-    exists (
-      select 1 from public.room_members rm2
-      where rm2.room_id = room_members.room_id and rm2.user_id = auth.uid()
-    )
-  );
+  using (public.is_room_member(room_id));
 
 -- 실제 가입은 create_room()/join_room_by_code() 함수를 통해서만 한다. 안전장치용 정책.
 drop policy if exists "user can add self as member" on public.room_members;
@@ -236,6 +244,7 @@ as $$
   limit limit_count;
 $$;
 
+grant execute on function public.is_room_member(uuid) to authenticated;
 grant execute on function public.create_room(text, integer) to authenticated;
 grant execute on function public.join_room_by_code(text) to authenticated;
 grant execute on function public.get_global_leaderboard(integer) to authenticated;
@@ -269,24 +278,13 @@ drop policy if exists "weekly goals are viewable by room members" on public.week
 create policy "weekly goals are viewable by room members"
   on public.weekly_goals for select
   to authenticated
-  using (
-    exists (
-      select 1 from public.room_members rm
-      where rm.room_id = weekly_goals.room_id and rm.user_id = auth.uid()
-    )
-  );
+  using (public.is_room_member(room_id));
 
 drop policy if exists "user can upsert own weekly goal" on public.weekly_goals;
 create policy "user can upsert own weekly goal"
   on public.weekly_goals for insert
   to authenticated
-  with check (
-    auth.uid() = user_id
-    and exists (
-      select 1 from public.room_members rm
-      where rm.room_id = weekly_goals.room_id and rm.user_id = auth.uid()
-    )
-  );
+  with check (auth.uid() = user_id and public.is_room_member(room_id));
 
 drop policy if exists "user can update own weekly goal" on public.weekly_goals;
 create policy "user can update own weekly goal"
@@ -331,24 +329,13 @@ drop policy if exists "workout logs are viewable by room members" on public.work
 create policy "workout logs are viewable by room members"
   on public.workout_logs for select
   to authenticated
-  using (
-    exists (
-      select 1 from public.room_members rm
-      where rm.room_id = workout_logs.room_id and rm.user_id = auth.uid()
-    )
-  );
+  using (public.is_room_member(room_id));
 
 drop policy if exists "user can insert own workout log" on public.workout_logs;
 create policy "user can insert own workout log"
   on public.workout_logs for insert
   to authenticated
-  with check (
-    auth.uid() = user_id
-    and exists (
-      select 1 from public.room_members rm
-      where rm.room_id = workout_logs.room_id and rm.user_id = auth.uid()
-    )
-  );
+  with check (auth.uid() = user_id and public.is_room_member(room_id));
 
 drop policy if exists "user can delete own workout log" on public.workout_logs;
 create policy "user can delete own workout log"
@@ -440,8 +427,7 @@ create policy "comments are viewable by room members"
   using (
     exists (
       select 1 from public.workout_logs wl
-      join public.room_members rm on rm.room_id = wl.room_id
-      where wl.id = workout_log_comments.log_id and rm.user_id = auth.uid()
+      where wl.id = workout_log_comments.log_id and public.is_room_member(wl.room_id)
     )
   );
 
@@ -453,8 +439,7 @@ create policy "user can insert own comment"
     auth.uid() = user_id
     and exists (
       select 1 from public.workout_logs wl
-      join public.room_members rm on rm.room_id = wl.room_id
-      where wl.id = workout_log_comments.log_id and rm.user_id = auth.uid()
+      where wl.id = workout_log_comments.log_id and public.is_room_member(wl.room_id)
     )
   );
 
@@ -495,24 +480,13 @@ drop policy if exists "fine exceptions are viewable by room members" on public.f
 create policy "fine exceptions are viewable by room members"
   on public.fine_exceptions for select
   to authenticated
-  using (
-    exists (
-      select 1 from public.room_members rm
-      where rm.room_id = fine_exceptions.room_id and rm.user_id = auth.uid()
-    )
-  );
+  using (public.is_room_member(room_id));
 
 drop policy if exists "user can submit own fine exception" on public.fine_exceptions;
 create policy "user can submit own fine exception"
   on public.fine_exceptions for insert
   to authenticated
-  with check (
-    auth.uid() = user_id
-    and exists (
-      select 1 from public.room_members rm
-      where rm.room_id = fine_exceptions.room_id and rm.user_id = auth.uid()
-    )
-  );
+  with check (auth.uid() = user_id and public.is_room_member(room_id));
 
 -- ------------------------------------------------------------
 -- 9. fine_exception_votes : 사유서에 대한 찬반 투표 (본인 것엔 투표 불가, 1인 1표)
@@ -539,8 +513,7 @@ create policy "votes are viewable by room members"
   using (
     exists (
       select 1 from public.fine_exceptions fe
-      join public.room_members rm on rm.room_id = fe.room_id
-      where fe.id = fine_exception_votes.exception_id and rm.user_id = auth.uid()
+      where fe.id = fine_exception_votes.exception_id and public.is_room_member(fe.room_id)
     )
   );
 
@@ -554,11 +527,10 @@ create policy "user can vote on others pending fine exception"
     auth.uid() = voter_id
     and exists (
       select 1 from public.fine_exceptions fe
-      join public.room_members rm on rm.room_id = fe.room_id
       where fe.id = exception_id
         and fe.status = 'pending'
         and fe.user_id <> auth.uid()
-        and rm.user_id = auth.uid()
+        and public.is_room_member(fe.room_id)
     )
   );
 
