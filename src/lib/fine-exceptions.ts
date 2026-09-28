@@ -9,7 +9,7 @@ export async function getFineExceptionsForWeek(
   weekStart: string,
   roomId: string
 ): Promise<FineExceptionWithVotes[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("fine_exceptions")
     .select(
       "id, user_id, week_start, reason, status, created_at, resolved_at, profile:profiles(id, nickname, avatar_url), votes:fine_exception_votes(id, exception_id, voter_id, vote, created_at)"
@@ -17,6 +17,10 @@ export async function getFineExceptionsForWeek(
     .eq("room_id", roomId)
     .eq("week_start", weekStart)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getFineExceptionsForWeek 조회 실패:", roomId, weekStart, error);
+  }
 
   return (data ?? []) as unknown as FineExceptionWithVotes[];
 }
@@ -38,10 +42,13 @@ export async function submitFineException(
 
 /** 이 방의 멤버 수(벌금 예외 다수결 threshold 표시용). */
 export async function getRoomMemberCount(supabase: Client, roomId: string) {
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from("room_members")
     .select("user_id", { count: "exact", head: true })
     .eq("room_id", roomId);
+  if (error) {
+    console.error("getRoomMemberCount 조회 실패:", roomId, error);
+  }
   return count ?? 0;
 }
 

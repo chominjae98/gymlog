@@ -1,22 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { addComment, deleteComment, getCommentsForLogs, updateComment } from "@/lib/social-data";
+import { addComment, deleteComment, updateComment } from "@/lib/social-data";
 import { useToast } from "@/components/ToastProvider";
 import type { CommentWithProfile } from "@/types/database";
 
-/** 인증 게시물 하나에 달리는 댓글. DayDrawer의 게시물 카드 하단에 붙는다. */
+/**
+ * 인증 게시물 하나에 달리는 댓글. DayDrawer의 게시물 카드 하단에 붙는다.
+ * 댓글 목록은 게시물마다 따로 조회하지 않고 부모(DayDrawer)가 하루치를 한 번에 배치
+ * 조회해 initialComments로 내려준다 — 그래서 이 컴포넌트는 자체 조회 effect가 없다.
+ */
 export function PostSocialPanel({
   logId,
   currentUserId,
+  initialComments,
 }: {
   logId: string;
   currentUserId: string;
+  initialComments: CommentWithProfile[];
 }) {
   const showToast = useToast();
-  const [comments, setComments] = useState<CommentWithProfile[]>([]);
+  const [comments, setComments] = useState<CommentWithProfile[]>(initialComments);
+  // 부모가 새로 배치 조회를 마치고 다른 초기값을 내려주면 로컬 낙관적 상태보다 최신
+  // 서버 값을 신뢰한다(ReactionBar/Dashboard의 override 리셋과 동일한 패턴).
+  const [prevInitialComments, setPrevInitialComments] = useState(initialComments);
+  if (initialComments !== prevInitialComments) {
+    setPrevInitialComments(initialComments);
+    setComments(initialComments);
+  }
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
   const [showAllComments, setShowAllComments] = useState(false);
@@ -25,21 +38,8 @@ export function PostSocialPanel({
   const [savingEdit, setSavingEdit] = useState(false);
 
   // 방금 업로드한 사진은 서버 새로고침 전까지 화면에만 존재하는 임시(optimistic) 기록이라
-  // 아직 실제 log_id가 없다. 이 경우 댓글 조회를 건너뛴다.
+  // 아직 실제 log_id가 없다. 이 경우 댓글을 달 수 없다.
   const isOptimistic = logId.startsWith("optimistic-");
-
-  useEffect(() => {
-    if (isOptimistic) return;
-    let cancelled = false;
-    const supabase = createClient();
-    getCommentsForLogs(supabase, [logId]).then((commentMap) => {
-      if (cancelled) return;
-      setComments(commentMap.get(logId) ?? []);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [logId, isOptimistic]);
 
   async function handleAddComment() {
     const body = commentText.trim();

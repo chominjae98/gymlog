@@ -10,7 +10,7 @@ type Client = SupabaseClient<Database>;
  * (notifications_actor_id_fkey)을 명시한다.
  */
 export async function getMyNotifications(supabase: Client): Promise<NotificationWithActor[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("notifications")
     .select(
       "id, user_id, actor_id, log_id, comment_id, reaction_id, type, created_at, read_at, actor:profiles!notifications_actor_id_fkey(id, nickname, avatar_url), comment:workout_log_comments(body), reaction:workout_log_reactions(emoji)"
@@ -18,15 +18,22 @@ export async function getMyNotifications(supabase: Client): Promise<Notification
     .order("created_at", { ascending: false })
     .limit(30);
 
+  if (error) {
+    console.error("getMyNotifications 조회 실패:", error);
+  }
+
   return (data ?? []) as unknown as NotificationWithActor[];
 }
 
 /** 안 읽은 알림이 있는지만 가볍게 확인한다(종 아이콘 빨간 점 표시용). */
 export async function hasUnreadNotifications(supabase: Client): Promise<boolean> {
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
     .is("read_at", null);
+  if (error) {
+    console.error("hasUnreadNotifications 조회 실패:", error);
+  }
   return (count ?? 0) > 0;
 }
 

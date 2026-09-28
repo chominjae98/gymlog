@@ -16,17 +16,26 @@ import {
 type Client = SupabaseClient<Database>;
 
 export async function getProfile(supabase: Client, userId: string) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("id, nickname, avatar_url, toss_user_key, created_at")
     .eq("id", userId)
     .single();
+  if (error) {
+    console.error("getProfile 조회 실패:", userId, error);
+  }
   return data as Profile | null;
 }
 
+/**
+ * 특정 달의 인증 기록. 캘린더 표시(monthLogs)뿐 아니라 "달력을 다른 달로 넘겼을 때"의
+ * 유일한 데이터 소스이기도 하므로, 조회 실패를 빈 배열로 감춰버리면 실제로는 아무도
+ * 인증하지 않은 것처럼 보이는 잘못된 화면이 뜬다. 호출부(Dashboard.handleMonthChange 등)가
+ * "진짜 빈 달"과 "조회 실패"를 구분해 에러를 보여줄 수 있도록 실패 시 예외를 던진다.
+ */
 export async function getMonthLogs(supabase: Client, monthDate: Date, roomId: string) {
   const { start, end } = getMonthRangeKeys(monthDate);
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("workout_logs")
     .select(
       "id, user_id, log_date, photo_urls, photo_hashes, memo, created_at, profile:profiles(id, nickname, avatar_url)"
@@ -35,6 +44,11 @@ export async function getMonthLogs(supabase: Client, monthDate: Date, roomId: st
     .gte("log_date", start)
     .lte("log_date", end)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getMonthLogs 조회 실패:", roomId, error);
+    throw error;
+  }
 
   return (data ?? []) as unknown as WorkoutLogWithProfile[];
 }
@@ -101,30 +115,50 @@ export async function getWeeklyProgress(
   const { start, end } = getWeekRangeKeys(today);
   const remaining = remainingDaysInWeekIncludingToday(today);
 
-  const [{ data: members }, { data: goals }, { data: logs }, { data: exceptions }] =
-    await Promise.all([
-      supabase
-        .from("room_members")
-        .select("profile:profiles(id, nickname, avatar_url)")
-        .eq("room_id", roomId),
-      supabase
-        .from("weekly_goals")
-        .select("user_id, target_days")
-        .eq("room_id", goalRoomId)
-        .eq("week_start", weekStart),
-      supabase
-        .from("workout_logs")
-        .select("user_id, log_date")
-        .eq("room_id", roomId)
-        .gte("log_date", start)
-        .lte("log_date", end),
-      supabase
-        .from("fine_exceptions")
-        .select("user_id")
-        .eq("room_id", roomId)
-        .eq("week_start", weekStart)
-        .eq("status", "approved"),
-    ]);
+  const [
+    { data: members, error: membersError },
+    { data: goals, error: goalsError },
+    { data: logs, error: logsError },
+    { data: exceptions, error: exceptionsError },
+  ] = await Promise.all([
+    supabase
+      .from("room_members")
+      .select("profile:profiles(id, nickname, avatar_url)")
+      .eq("room_id", roomId),
+    supabase
+      .from("weekly_goals")
+      .select("user_id, target_days")
+      .eq("room_id", goalRoomId)
+      .eq("week_start", weekStart),
+    supabase
+      .from("workout_logs")
+      .select("user_id, log_date")
+      .eq("room_id", roomId)
+      .gte("log_date", start)
+      .lte("log_date", end),
+    supabase
+      .from("fine_exceptions")
+      .select("user_id")
+      .eq("room_id", roomId)
+      .eq("week_start", weekStart)
+      .eq("status", "approved"),
+  ]);
+
+  // 이 함수의 결과(achievedDays/status)는 벌금 위기 여부와 정산 금액에 직결된다.
+  // 네 쿼리 중 하나라도 실패했는데 조용히 빈 배열로 넘어가면(예: logs 실패 → 아무도
+  // 인증하지 않은 것처럼 계산 → 실제로 목표를 채운 사람도 "벌금 확정"으로 잘못 표시),
+  // 실제와 다른 금액이 아무 표시 없이 화면에 뜨게 된다. 그런 경우를 절대 조용히
+  // 넘기지 않고 예외를 던져 호출부가 에러 상태로 처리하게 한다.
+  const firstError = membersError ?? goalsError ?? logsError ?? exceptionsError;
+  if (firstError) {
+    console.error("getWeeklyProgress 조회 실패:", roomId, {
+      membersError,
+      goalsError,
+      logsError,
+      exceptionsError,
+    });
+    throw firstError;
+  }
 
   const profiles = (
     (members ?? []) as unknown as { profile: Pick<Profile, "id" | "nickname" | "avatar_url"> }[]
@@ -140,19 +174,19 @@ export async function getWeeklyProgress(
     achievedByUser.set(log.user_id, set);
   }
   // 다수결로 가결된 벌금 예외 사유서는 실제 인증 없이도 그 주 달성일수에 +1로 카운트된다.
-  const exceptionCreditByUser = new Map<string, number>();
+  // 사람당 그 주에 가결될 수 있는 사유서는 최대 1건(DB 부분 유니크 인덱스로 강제됨)이므로,
+  // 여기서도 +1을 넘지 않도록 캡을 둔다 — 마이그레이션 전 잔여 데이터 등으로 그 이상이
+  // 존재하더라도 벌금 회피에 쓰이지 않도록 방어한다.
+  const exceptionCreditByUser = new Set<string>();
   for (const ex of exceptions ?? []) {
-    exceptionCreditByUser.set(
-      ex.user_id,
-      (exceptionCreditByUser.get(ex.user_id) ?? 0) + 1
-    );
+    exceptionCreditByUser.add(ex.user_id);
   }
 
   return (profiles ?? []).map((profile) => {
     const targetDays = goalByUser.get(profile.id) ?? null;
     const achievedDays =
       (achievedByUser.get(profile.id)?.size ?? 0) +
-      (exceptionCreditByUser.get(profile.id) ?? 0);
+      (exceptionCreditByUser.has(profile.id) ? 1 : 0);
 
     return {
       profile,
@@ -171,13 +205,16 @@ export async function getMyWeeklyGoal(
   roomId: string
 ) {
   const weekStart = getWeekStartKey(today);
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("weekly_goals")
     .select("target_days")
     .eq("user_id", userId)
     .eq("room_id", roomId)
     .eq("week_start", weekStart)
     .maybeSingle();
+  if (error) {
+    console.error("getMyWeeklyGoal 조회 실패:", userId, roomId, error);
+  }
   return data?.target_days ?? null;
 }
 

@@ -27,6 +27,7 @@ import {
 import { fetchMonthLogs } from "@/lib/client-data";
 import { buildTossTransferLink } from "@/lib/toss-transfer";
 import { formatMonthTitle, isSameMonthGuard, nowInSeoul } from "@/lib/date";
+import { useToast } from "@/components/ToastProvider";
 import type {
   FineExceptionWithVotes,
   Profile,
@@ -72,6 +73,7 @@ export function Dashboard({
   const roomId = room.id;
   const roomAccent = getRoomAccentClasses(roomId);
   const router = useRouter();
+  const showToast = useToast();
   const today = nowInSeoul();
 
   const [monthDate, setMonthDate] = useState(today);
@@ -137,8 +139,17 @@ export function Dashboard({
       setOtherMonthLogs(null);
       return;
     }
-    const logs = await fetchMonthLogs(next, roomId);
-    setOtherMonthLogs(logs);
+    try {
+      const logs = await fetchMonthLogs(next, roomId);
+      setOtherMonthLogs(logs);
+    } catch (err) {
+      // 조회에 실패했을 때 이전 달(또는 이전 상태)의 기록을 그대로 남겨두면 지금 보고
+      // 있는 달의 헤더와 맞지 않는 기록이 뒤섞여 보인다. 실패를 빈 배열로 조용히
+      // 감추는 대신, 명시적으로 비우고 토스트로 실패했음을 알려 재시도를 유도한다.
+      console.error("월별 기록 조회 실패:", roomId, err);
+      setOtherMonthLogs([]);
+      showToast("이 달 기록을 불러오지 못했어요. 다시 시도해 주세요.", "error");
+    }
   }
 
   const logsByDate = groupLogsByDate(monthLogs);
@@ -305,6 +316,7 @@ export function Dashboard({
           // 기준 최신 데이터(homeLogsByDate)를 가리킬 수 있어 그 경우를 대비해 폴백한다.
           logs={logsByDate.get(selectedKey) ?? homeLogsByDate.get(selectedKey) ?? []}
           currentUserId={userId}
+          roomId={roomId}
           onClose={() => setSelectedKey(null)}
           isToday={selectedKey === tKey}
           onUploadClick={() => {

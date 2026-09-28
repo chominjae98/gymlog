@@ -18,12 +18,16 @@ export async function getHeatmapLogDates(
   const from = new Date(today);
   from.setDate(from.getDate() - (HEATMAP_DAYS - 1));
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("workout_logs")
     .select("log_date")
     .eq("user_id", userId)
     .gte("log_date", toDateKey(from))
     .lte("log_date", toDateKey(today));
+
+  if (error) {
+    console.error("getHeatmapLogDates 조회 실패:", userId, error);
+  }
 
   return new Set((data ?? []).map((r) => r.log_date));
 }
@@ -33,7 +37,10 @@ export async function getHeatmapLogDates(
  * 같은 날 여러 번 올렸어도 하루로 센다 — 그래서 row 개수가 아니라 log_date 종류 수를 센다.
  */
 export async function getTotalLogDays(supabase: Client, userId: string): Promise<number> {
-  const { data } = await supabase.from("workout_logs").select("log_date").eq("user_id", userId);
+  const { data, error } = await supabase.from("workout_logs").select("log_date").eq("user_id", userId);
+  if (error) {
+    console.error("getTotalLogDays 조회 실패:", userId, error);
+  }
   return new Set((data ?? []).map((r) => r.log_date)).size;
 }
 

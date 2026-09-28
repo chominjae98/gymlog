@@ -32,6 +32,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => [...prev, { id, message, kind }]);
     const timeoutId = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
+      timeoutIds.current = timeoutIds.current.filter((t) => t !== timeoutId);
     }, 2400);
     timeoutIds.current.push(timeoutId);
   }, []);

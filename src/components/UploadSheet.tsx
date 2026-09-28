@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatDayTitle, nowInSeoul, toDateKey } from "@/lib/date";
 import { groupLogsByDate } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
-import { uploadWorkoutPhotos } from "@/lib/storage-upload";
+import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { resizeImageForUpload } from "@/lib/image-resize";
 import { resizeAndHashFiles } from "@/lib/photo-hash";
 import { getExistingPhotoHashes } from "@/lib/duplicate-check";
@@ -49,13 +49,13 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    getExistingPhotoHashes(supabase, userId).then((hashes) => {
+    getExistingPhotoHashes(supabase, userId, roomId).then((hashes) => {
       if (!cancelled) setExistingHashes(hashes);
     });
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, roomId]);
 
   const today = nowInSeoul();
   const initialDate = new Date(`${initialDateKey}T00:00:00`);
@@ -71,9 +71,14 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
     useState<Map<string, WorkoutLogWithProfile[]>>(EMPTY_LOGS_BY_DATE);
   useEffect(() => {
     let cancelled = false;
-    fetchMonthLogs(calendarMonth, roomId).then((logs) => {
-      if (!cancelled) setCalendarLogsByDate(groupLogsByDate(logs));
-    });
+    fetchMonthLogs(calendarMonth, roomId)
+      .then((logs) => {
+        if (!cancelled) setCalendarLogsByDate(groupLogsByDate(logs));
+      })
+      .catch((err) => {
+        // 달력 점 표시는 보조 정보라 실패해도 업로드 자체를 막지 않는다 — 콘솔에만 남긴다.
+        console.error("업로드 시트 달력 기록 조회 실패:", err);
+      });
     return () => {
       cancelled = true;
     };
@@ -182,6 +187,10 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
 
     setUploading(false);
     if (insertError) {
+      // 사진은 이미 스토리지에 올라갔지만 기록(DB row)은 저장되지 않은 상태 — 그대로
+      // 두면 아무 기록도 가리키지 않는 고아 파일로 스토리지에 계속 남는다(best-effort 정리).
+      console.error("workout_logs insert 실패, 방금 올린 사진 정리 시도:", insertError);
+      await removeWorkoutPhotos(supabase, photoUrls);
       setError("기록 저장에 실패했어요. 다시 시도해 주세요.");
       return;
     }

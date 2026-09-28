@@ -7,6 +7,7 @@ import { formatDayTitle, formatTime, nowInSeoul, toDateKey } from "@/lib/date";
 import { countUniquePeople } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos } from "@/lib/storage-upload";
+import { getCommentsForLogs, getReactionsForLogs } from "@/lib/social-data";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -14,12 +15,13 @@ import { useToast } from "@/components/ToastProvider";
 import { EditPostSheet } from "@/components/EditPostSheet";
 import { PostSocialPanel } from "@/components/PostSocialPanel";
 import { ReactionBar } from "@/components/ReactionBar";
-import type { WorkoutLogWithProfile } from "@/types/database";
+import type { CommentWithProfile, ReactionSummary, WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
   dateKey: string;
   logs: WorkoutLogWithProfile[];
   currentUserId: string;
+  roomId: string;
   onClose: () => void;
   isToday: boolean;
   onUploadClick: () => void;
@@ -30,6 +32,7 @@ export function DayDrawer({
   dateKey,
   logs,
   currentUserId,
+  roomId,
   onClose,
   isToday,
   onUploadClick,
@@ -39,11 +42,58 @@ export function DayDrawer({
   useCloseOnBackButton(onClose);
   const showToast = useToast();
   const date = new Date(`${dateKey}T00:00:00`);
-  const peopleCount = countUniquePeople(logs);
   const isFuture = dateKey > toDateKey(nowInSeoul());
 
   const [editingLog, setEditingLog] = useState<WorkoutLogWithProfile | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // 삭제에 성공한 게시물은 onMutated()(router.refresh())가 서버 데이터를 다시 받아오기
+  // 전까지도 즉시 화면에서 사라지도록, 그 사이 시간 동안만 로컬에서 걸러낸다.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const visibleLogs = logs.filter((l) => !deletedIds.has(l.id));
+  const peopleCount = countUniquePeople(visibleLogs);
+
+  // 댓글/리액션은 게시물마다 따로 조회하지 않고, 이 날짜에 보이는 게시물 전체를 한 번에
+  // 배치로 조회한다(하루에 게시물이 여러 개면 posts × 2번 나가던 쿼리를 2번으로 줄임).
+  const realLogIds = visibleLogs
+    .map((l) => l.id)
+    .filter((id) => !id.startsWith("optimistic-"));
+  // 배열 레퍼런스는 부모가 리렌더될 때마다 새로 생기지만, 실제 로그 id 구성이 같으면
+  // 이 문자열은 그대로라 effect가 불필요하게 다시 실행되지 않는다.
+  const realLogIdsKey = realLogIds.join(",");
+  const [socialData, setSocialData] = useState<{
+    comments: Map<string, CommentWithProfile[]>;
+    reactions: Map<string, ReactionSummary>;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    const fetchPromise: Promise<
+      [Map<string, CommentWithProfile[]>, Map<string, ReactionSummary>]
+    > =
+      realLogIds.length === 0
+        ? Promise.resolve([new Map(), new Map()])
+        : Promise.all([
+            getCommentsForLogs(supabase, realLogIds),
+            getReactionsForLogs(supabase, realLogIds, currentUserId),
+          ]);
+    fetchPromise
+      .then(([comments, reactions]) => {
+        if (cancelled) return;
+        setSocialData({ comments, reactions });
+      })
+      .catch((err) => {
+        console.error("게시물 댓글/리액션 조회 실패:", err);
+        if (!cancelled) setSocialData({ comments: new Map(), reactions: new Map() });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // realLogIds 배열은 부모가 리렌더될 때마다 새 레퍼런스로 만들어지므로(logsByDate가
+    // 매번 새로 계산됨), 의도적으로 그 대신 내용 기반 문자열(realLogIdsKey)만 의존성으로
+    // 둔다 — realLogIds를 넣으면 로그 구성이 그대로인데도 매 렌더마다 다시 조회하게 된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realLogIdsKey, currentUserId]);
 
   async function deleteLog(log: WorkoutLogWithProfile) {
     if (!window.confirm("이 인증 기록을 삭제할까요?")) return;
@@ -61,6 +111,7 @@ export function DayDrawer({
     await removeWorkoutPhotos(supabase, log.photo_urls);
 
     setBusyId(null);
+    setDeletedIds((prev) => new Set(prev).add(log.id));
     showToast("게시물을 삭제했어요");
     onMutated();
   }
@@ -93,7 +144,7 @@ export function DayDrawer({
           </div>
         </div>
 
-        {logs.length === 0 ? (
+        {visibleLogs.length === 0 ? (
           <div className="flex min-h-[52dvh] flex-col items-center justify-center gap-4 px-8 pb-12 text-center">
             <span className="text-[52px] leading-none">🏃</span>
             <div className="flex flex-col gap-2">
@@ -119,7 +170,7 @@ export function DayDrawer({
           // 인스타그램 피드처럼 세로로 스크롤하며 카드 하나씩 보여준다.
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8">
             <div className="flex flex-col gap-5 pt-2">
-              {logs.map((log, i) => (
+              {visibleLogs.map((log, i) => (
                 <article
                   key={log.id}
                   className="surface-card animate-fade-up overflow-hidden"
@@ -160,9 +211,17 @@ export function DayDrawer({
                     </p>
                   )}
 
-                  <ReactionBar logId={log.id} currentUserId={currentUserId} />
+                  <ReactionBar
+                    logId={log.id}
+                    currentUserId={currentUserId}
+                    initialSummary={socialData?.reactions.get(log.id)}
+                  />
 
-                  <PostSocialPanel logId={log.id} currentUserId={currentUserId} />
+                  <PostSocialPanel
+                    logId={log.id}
+                    currentUserId={currentUserId}
+                    initialComments={socialData?.comments.get(log.id) ?? []}
+                  />
                 </article>
               ))}
             </div>
@@ -173,6 +232,7 @@ export function DayDrawer({
       {editingLog && (
         <EditPostSheet
           log={editingLog}
+          roomId={roomId}
           onClose={() => setEditingLog(null)}
           onSaved={() => {
             setEditingLog(null);

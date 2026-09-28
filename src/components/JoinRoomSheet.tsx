@@ -25,6 +25,7 @@ export function JoinRoomSheet({ onClose, onJoined, initialCode }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleJoin() {
+    if (busy) return;
     const trimmed = code.trim();
     if (!trimmed) {
       setError("초대 코드를 입력해 주세요.");

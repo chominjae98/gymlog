@@ -31,5 +31,12 @@ export function resolveCookieOptions(
   if (isRemoval || isTransientAuthCookie(name)) {
     return options ?? {};
   }
-  return { ...options, maxAge: AUTH_COOKIE_MAX_AGE };
+  // @supabase/ssr의 기본 쿠키 옵션에는 Secure 속성이 없다 — 세션(access/refresh token)이
+  // 담긴 쿠키가 HTTPS 강제 없이 내려가는 셈이라, 프로덕션에서는 명시적으로 강제한다.
+  // 로컬 개발(http://localhost)에서는 Secure 쿠키가 저장되지 않으므로 그대로 둔다.
+  return {
+    ...options,
+    maxAge: AUTH_COOKIE_MAX_AGE,
+    secure: options?.secure ?? process.env.NODE_ENV === "production",
+  };
 }

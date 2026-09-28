@@ -35,9 +35,14 @@ export function LoginScreen({ authError }: { authError?: boolean }) {
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!cancelled && session) router.refresh();
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!cancelled && session) router.refresh();
+      })
+      .catch((err) => {
+        console.error("getSession 확인 실패:", err);
+      });
     return () => {
       cancelled = true;
     };

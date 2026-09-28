@@ -30,6 +30,7 @@ export function ExceptionRequestSheet({ userId, weekStart, roomId, onClose, onSu
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
+    if (submitting) return;
     const trimmed = reason.trim();
     if (trimmed.length === 0) {
       setError("사정을 적어 주세요.");
@@ -49,7 +50,14 @@ export function ExceptionRequestSheet({ userId, weekStart, roomId, onClose, onSu
 
     setSubmitting(false);
     if (insertError) {
-      setError("제출에 실패했어요. 다시 시도해 주세요.");
+      // 이번 주에 이미 투표 중이거나 승인된 사유서가 있으면 DB가 유니크 제약(23505)으로
+      // 막는다 — 승인된 뒤에도 화면이 갱신되기 전 잠깐 다시 뜬 제출 버튼을 눌렀거나,
+      // 두 탭에서 거의 동시에 제출한 경우다.
+      setError(
+        insertError.code === "23505"
+          ? "이번 주에는 이미 제출한 사유서가 있어요."
+          : "제출에 실패했어요. 다시 시도해 주세요."
+      );
       return;
     }
     showToast("사유서를 제출했어요. 친구들의 투표를 기다려 주세요.");

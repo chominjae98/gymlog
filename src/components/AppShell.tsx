@@ -77,7 +77,11 @@ export function AppShell(props: Props) {
 
   // 위에서 서버가 홈 데이터를 생략했는데(방 화면으로 바로 들어온 딥링크 등) 캐시된
   // 값도 전혀 없는 드문 경우엔, 홈 탭을 실제로 볼 때 브라우저에서 직접 한 번 받아온다
-  // (그렇지 않으면 "불러오는 중..."에서 영영 멈춰버림).
+  // (그렇지 않으면 "불러오는 중..."에서 영영 멈춰버림). 이 요청 자체가 실패하면(네트워크
+  // 오류 등) 에러 상태를 명확히 보여주고 재시도 버튼을 제공한다 — catch 없이 두면
+  // "불러오는 중..."에서 아무 설명 없이 영구히 멈춘 것처럼 보인다.
+  const [defaultRoomDataError, setDefaultRoomDataError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
   useEffect(() => {
     if (defaultRoomData || !props.defaultRoom || tab !== "home") return;
     let cancelled = false;
@@ -89,14 +93,20 @@ export function AppShell(props: Props) {
       getWeeklyProgress(supabase, today, roomId),
       getMyWeeklyGoal(supabase, props.userId, today, roomId),
       getRoomMemberCount(supabase, roomId),
-    ]).then(([monthLogs, weeklyProgress, myGoal, roomMemberCount]) => {
-      if (cancelled) return;
-      setDefaultRoomData({ monthLogs, weeklyProgress, myGoal, finePerDay: 0, exceptions: [], roomMemberCount });
-    });
+    ])
+      .then(([monthLogs, weeklyProgress, myGoal, roomMemberCount]) => {
+        if (cancelled) return;
+        setDefaultRoomData({ monthLogs, weeklyProgress, myGoal, finePerDay: 0, exceptions: [], roomMemberCount });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("홈 데이터 조회 실패:", err);
+        setDefaultRoomDataError(true);
+      });
     return () => {
       cancelled = true;
     };
-  }, [defaultRoomData, props.defaultRoom, props.userId, tab]);
+  }, [defaultRoomData, props.defaultRoom, props.userId, tab, retryToken]);
 
   function selectRoom(roomId: string) {
     setPendingRoomId(roomId);
@@ -131,9 +141,24 @@ export function AppShell(props: Props) {
             initialExceptions={defaultRoomData.exceptions}
           />
         ) : props.defaultRoom ? (
-          <div className="flex min-h-dvh items-center justify-center px-6 text-center text-[13px] text-muted">
-            불러오는 중...
-          </div>
+          defaultRoomDataError ? (
+            <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center text-[13px] text-muted">
+              <p>홈 정보를 불러오지 못했어요.</p>
+              <button
+                onClick={() => {
+                  setDefaultRoomDataError(false);
+                  setRetryToken((t) => t + 1);
+                }}
+                className="rounded-full bg-surface-muted px-4 py-2 text-[12px] font-bold text-foreground active:scale-[0.97]"
+              >
+                다시 시도
+              </button>
+            </div>
+          ) : (
+            <div className="flex min-h-dvh items-center justify-center px-6 text-center text-[13px] text-muted">
+              불러오는 중...
+            </div>
+          )
         ) : (
           <div className="flex min-h-dvh items-center justify-center px-6 text-center text-[13px] text-muted">
             공용 홈 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.

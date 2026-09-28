@@ -949,3 +949,16 @@ drop trigger if exists on_reaction_notify on public.workout_log_reactions;
 create trigger on_reaction_notify
   after insert or update on public.workout_log_reactions
   for each row execute procedure public.notify_on_reaction();
+
+-- ------------------------------------------------------------
+-- 19. 벌금 예외 사유서 중복 제출 방지 : 한 사람이 같은 주에 여러 건을 제출하면
+--     (예: 승인된 뒤에도 여전히 fined/at-risk 상태라 다시 제출 가능한 화면 버그가 있었음)
+--     친구들이 매번 승인해줄 경우 achievedDays가 무한정 올라가 벌금을 전액 회피할 수
+--     있었다. "pending 또는 approved" 상태인 사유서는 사람당 그 주에 최대 1건만
+--     존재하도록 부분 유니크 인덱스로 DB에서 강제한다. rejected는 제외되므로, 반려된
+--     뒤 다른 사정으로 다시 제출하는 것은 여전히 허용된다.
+-- ------------------------------------------------------------
+drop index if exists public.fine_exceptions_user_week_room_active_key;
+create unique index fine_exceptions_user_week_room_active_key
+  on public.fine_exceptions (user_id, week_start, room_id)
+  where status in ('pending', 'approved');

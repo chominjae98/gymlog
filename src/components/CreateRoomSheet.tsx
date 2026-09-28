@@ -24,6 +24,7 @@ export function CreateRoomSheet({ onClose, onCreated }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreate() {
+    if (busy) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setError("방 이름을 입력해 주세요.");

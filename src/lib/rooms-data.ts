@@ -78,6 +78,12 @@ export async function getLeaderboard(
   supabase: Client,
   period: LeaderboardPeriod
 ): Promise<LeaderboardEntry[]> {
-  const { data } = await supabase.rpc("get_leaderboard", { period, limit_count: LEADERBOARD_LIMIT });
+  const { data, error } = await supabase.rpc("get_leaderboard", {
+    period,
+    limit_count: LEADERBOARD_LIMIT,
+  });
+  if (error) {
+    console.error("getLeaderboard 조회 실패:", period, error);
+  }
   return (data ?? []) as LeaderboardEntry[];
 }

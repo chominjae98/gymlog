@@ -15,6 +15,7 @@ import type { WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
   log: WorkoutLogWithProfile;
+  roomId: string;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -22,7 +23,7 @@ type Props = {
 const MAX_PHOTOS = 5;
 
 /** 이미 올린 인증 게시물의 사진(여러 장)/메모를 통째로 수정하는 바텀시트. */
-export function EditPostSheet({ log, onClose, onSaved }: Props) {
+export function EditPostSheet({ log, roomId, onClose, onSaved }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
@@ -48,13 +49,13 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    getExistingPhotoHashes(supabase, log.user_id, log.id).then((hashes) => {
+    getExistingPhotoHashes(supabase, log.user_id, roomId, log.id).then((hashes) => {
       if (!cancelled) setExistingHashes(hashes);
     });
     return () => {
       cancelled = true;
     };
-  }, [log.user_id, log.id]);
+  }, [log.user_id, roomId, log.id]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -151,6 +152,10 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
 
     setSaving(false);
     if (updateError) {
+      // 새 사진은 이미 스토리지에 올라갔지만 이번 수정(update)은 반영되지 않은 상태 —
+      // 그대로 두면 아무 기록에도 연결되지 않는 고아 파일로 남는다(best-effort 정리).
+      console.error("workout_logs update 실패, 새로 올린 사진 정리 시도:", updateError);
+      await removeWorkoutPhotos(supabase, uploadedUrls);
       setError("저장에 실패했어요. 다시 시도해 주세요.");
       return;
     }

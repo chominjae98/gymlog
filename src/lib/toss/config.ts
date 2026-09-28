@@ -1,3 +1,4 @@
+import "server-only";
 import { Agent } from "undici";
 
 /**

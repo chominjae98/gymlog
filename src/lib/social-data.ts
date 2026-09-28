@@ -13,11 +13,15 @@ export async function getCommentsForLogs(
   const map = new Map<string, CommentWithProfile[]>();
   if (logIds.length === 0) return map;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("workout_log_comments")
     .select("id, log_id, user_id, body, created_at, profile:profiles(id, nickname, avatar_url)")
     .in("log_id", logIds)
     .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("getCommentsForLogs 조회 실패:", logIds, error);
+  }
 
   for (const row of (data ?? []) as unknown as CommentWithProfile[]) {
     const arr = map.get(row.log_id) ?? [];
@@ -48,24 +52,34 @@ export async function updateComment(supabase: Client, commentId: string, body: s
     .single();
 }
 
-/** 게시물 하나의 리액션을 이모지별 개수로 집계하고, 내가 고른 이모지가 있으면 함께 반환한다. */
-export async function getReactionsForLog(
+/**
+ * 여러 게시물의 리액션을 한 번에 조회해 게시물별로 이모지 개수/내 선택을 집계한다.
+ * (게시물마다 따로 조회하던 것을 배치로 합침 — DayDrawer가 하루치 게시물 전체를 한 번에 부른다.)
+ */
+export async function getReactionsForLogs(
   supabase: Client,
-  logId: string,
+  logIds: string[],
   currentUserId: string
-): Promise<ReactionSummary> {
-  const { data } = await supabase
-    .from("workout_log_reactions")
-    .select("user_id, emoji")
-    .eq("log_id", logId);
+): Promise<Map<string, ReactionSummary>> {
+  const map = new Map<string, ReactionSummary>();
+  if (logIds.length === 0) return map;
 
-  const counts: Record<string, number> = {};
-  let myEmoji: string | null = null;
-  for (const row of data ?? []) {
-    counts[row.emoji] = (counts[row.emoji] ?? 0) + 1;
-    if (row.user_id === currentUserId) myEmoji = row.emoji;
+  const { data, error } = await supabase
+    .from("workout_log_reactions")
+    .select("log_id, user_id, emoji")
+    .in("log_id", logIds);
+
+  if (error) {
+    console.error("getReactionsForLogs 조회 실패:", logIds, error);
   }
-  return { counts, myEmoji };
+
+  for (const row of data ?? []) {
+    const summary = map.get(row.log_id) ?? { counts: {}, myEmoji: null };
+    summary.counts[row.emoji] = (summary.counts[row.emoji] ?? 0) + 1;
+    if (row.user_id === currentUserId) summary.myEmoji = row.emoji;
+    map.set(row.log_id, summary);
+  }
+  return map;
 }
 
 /**

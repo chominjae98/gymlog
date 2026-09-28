@@ -44,11 +44,20 @@ export function FineExceptionPanel({
   const othersPending = exceptions.filter(
     (e) => e.user_id !== currentUserId && e.status === "pending"
   );
+  // 이번 주에 pending 또는 approved 사유서가 이미 있으면 다시 제출할 수 없다(DB에도
+  // 부분 유니크 인덱스로 동일하게 강제됨) — approved는 이미 achievedDays에 +1로
+  // 반영됐는데도 여전히 fined/at-risk일 수 있어, pending만 확인하면 계속 새 사유서를
+  // 제출해 벌금을 무한정 회피할 수 있었다.
+  const myActive = exceptions.filter(
+    (e) =>
+      e.user_id === currentUserId && (e.status === "pending" || e.status === "approved")
+  );
   const canRequest =
-    (myStatus === "fined" || myStatus === "at-risk") && myPending.length === 0;
+    (myStatus === "fined" || myStatus === "at-risk") && myActive.length === 0;
   const threshold = majorityThreshold(totalMembers);
 
   async function handleVote(exceptionId: string, vote: "approve" | "reject") {
+    if (votingId) return;
     setVotingId(exceptionId);
     const supabase = createClient();
     const { error } = await castFineExceptionVote(supabase, exceptionId, currentUserId, vote);
