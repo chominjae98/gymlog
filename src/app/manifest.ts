@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     // 스플래시 화면에 그대로 노출되는 값이라 짧고 임팩트 있게
-    name: "오운완",
-    short_name: "오운완",
+    name: "운인방",
+    short_name: "운인방",
     description: "친구들과 함께하는 주간 운동 목표와 인증 기록",
     start_url: "/",
     display: "standalone",
