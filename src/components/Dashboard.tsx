@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Receipt } from "lucide-react";
+import { Plus, Receipt } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
@@ -35,10 +35,11 @@ type Props = {
   userId: string;
   profile: Profile;
   room: Room;
+  /** 정산 요약/주간 목표/벌금 관련 UI를 보여줄지 여부.
+   * 모두가 함께 쓰는 공용 홈(is_default 방)에는 벌금이라는 개념 자체가 없어 false로 둔다.
+   * 친구들끼리 따로 만든 방("내 방" 탭)에서는 true. */
+  showFinance: boolean;
   roomMemberCount: number;
-  /** "내 방" 탭에서 특정 방으로 들어왔을 때만 전달됨 — 방 목록으로 돌아가는 버튼을 보여준다.
-   * "홈"(모두가 함께 쓰는 공용 방)에서는 전달되지 않아 뒤로가기가 없다. */
-  onBack?: () => void;
   initialMonthLogs: WorkoutLogWithProfile[];
   initialWeeklyProgress: WeeklyProgress[];
   initialMyGoal: number | null;
@@ -51,8 +52,8 @@ export function Dashboard({
   userId,
   profile,
   room,
+  showFinance,
   roomMemberCount,
-  onBack,
   initialMonthLogs,
   initialWeeklyProgress,
   initialMyGoal,
@@ -170,48 +171,33 @@ export function Dashboard({
 
       <Header
         profile={profile}
-        myGoal={myGoal}
-        onGoalClick={() => setShowGoal(true)}
+        myGoal={showFinance ? myGoal : undefined}
+        onGoalClick={showFinance ? () => setShowGoal(true) : undefined}
         onHeatmapClick={() => setShowHeatmap(true)}
       />
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
-        {onBack && (
+        {showFinance && (
           <button
-            onClick={onBack}
-            className="flex w-fit items-center gap-2 self-start rounded-full bg-surface-muted py-1.5 pl-2.5 pr-3.5 text-left transition active:scale-95"
+            onClick={() => setShowSettlement(true)}
+            className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
           >
-            <ArrowLeft size={14} className="text-muted" />
-            <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${roomAccent.soft}`}
-            >
-              <span className={`text-[10px] font-bold ${roomAccent.strong}`}>
-                {room.name.charAt(0)}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warn-soft">
+                <Receipt size={18} className="text-warn" />
+              </div>
+              <div>
+                <p className="text-[13px] font-semibold text-foreground">
+                  {formatMonthTitle(monthDate)} 정산 요약
+                </p>
+                <p className="mt-0.5 text-[12px] text-muted">벌금 얼마 모였는지 한눈에 보기</p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
+              보기
             </span>
-            <span className="truncate text-[12.5px] font-semibold text-foreground">{room.name}</span>
           </button>
         )}
-
-        <button
-          onClick={() => setShowSettlement(true)}
-          className="surface-card flex items-center justify-between px-4 py-3.5 text-left transition active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warn-soft">
-              <Receipt size={18} className="text-warn" />
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">
-                {formatMonthTitle(monthDate)} 정산 요약
-              </p>
-              <p className="mt-0.5 text-[12px] text-muted">벌금 얼마 모였는지 한눈에 보기</p>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-surface-muted px-3 py-1.5 text-[12px] font-bold text-foreground">
-            보기
-          </span>
-        </button>
 
         <button
           onClick={() => setSelectedKey(tKey)}
@@ -230,16 +216,20 @@ export function Dashboard({
           </span>
         </button>
 
-        <FineWatchlist progress={weeklyProgress} weeklyFine={weeklyFine} />
+        {showFinance && (
+          <>
+            <FineWatchlist progress={weeklyProgress} weeklyFine={weeklyFine} />
 
-        <FineExceptionPanel
-          exceptions={initialExceptions}
-          currentUserId={userId}
-          totalMembers={roomMemberCount}
-          myStatus={weeklyProgress.find((p) => p.profile.id === userId)?.status}
-          onRequestClick={() => setShowExceptionRequest(true)}
-          onMutated={() => router.refresh()}
-        />
+            <FineExceptionPanel
+              exceptions={initialExceptions}
+              currentUserId={userId}
+              totalMembers={roomMemberCount}
+              myStatus={weeklyProgress.find((p) => p.profile.id === userId)?.status}
+              onRequestClick={() => setShowExceptionRequest(true)}
+              onMutated={() => router.refresh()}
+            />
+          </>
+        )}
 
         <CalendarGrid
           monthDate={monthDate}
@@ -249,7 +239,7 @@ export function Dashboard({
           onSelectDate={setSelectedKey}
         />
 
-        <FineSection progress={weeklyProgress} weeklyFine={weeklyFine} />
+        {showFinance && <FineSection progress={weeklyProgress} weeklyFine={weeklyFine} />}
       </main>
 
       <button

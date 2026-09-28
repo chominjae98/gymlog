@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Check, LogOut, Share2, Users, X } from "lucide-react";
+import { LogOut, Share2, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoomMembers, leaveRoom, type RoomMemberProfile } from "@/lib/rooms-data";
 import { getRoomAccentClasses } from "@/lib/room-colors";
@@ -14,14 +14,12 @@ import type { Room } from "@/types/database";
 
 type Props = {
   room: Room;
-  isActive: boolean;
   onClose: () => void;
-  onSwitchClick: () => void;
   onLeft: () => void;
 };
 
-/** 방 하나를 관리하는 화면: 초대 코드 공유, 멤버 목록, 하루 벌금, 방 나가기. */
-export function RoomManageSheet({ room, isActive, onClose, onSwitchClick, onLeft }: Props) {
+/** 방 하나를 관리하는 화면: 초대 코드 공유, 멤버 목록, 방 나가기. */
+export function RoomManageSheet({ room, onClose, onLeft }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
@@ -92,12 +90,6 @@ export function RoomManageSheet({ room, isActive, onClose, onSwitchClick, onLeft
               <X size={18} />
             </button>
           </div>
-          {isActive && (
-            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-bold text-brand-strong">
-              <Check size={12} />
-              지금 보고 있는 방
-            </span>
-          )}
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
@@ -111,17 +103,10 @@ export function RoomManageSheet({ room, isActive, onClose, onSwitchClick, onLeft
                 {room.invite_code}
               </p>
             </div>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-foreground">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
               <Share2 size={16} />
             </span>
           </button>
-
-          <div className="mt-2.5 surface-card px-4 py-3.5">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="font-medium text-muted">하루 벌금</span>
-              <span className="font-bold text-foreground">{room.fine_per_day.toLocaleString()}원</span>
-            </div>
-          </div>
 
           <div className="mt-5 flex items-center gap-1.5 px-1">
             <Users size={14} className="text-muted" />
@@ -158,19 +143,10 @@ export function RoomManageSheet({ room, isActive, onClose, onSwitchClick, onLeft
             )}
           </ul>
 
-          {!isActive && (
-            <button
-              onClick={onSwitchClick}
-              className="mt-5 w-full rounded-2xl bg-brand py-3 text-[14px] font-semibold text-white transition active:scale-[0.98]"
-            >
-              이 방으로 전환하기
-            </button>
-          )}
-
           <button
             onClick={handleLeave}
             disabled={leaving}
-            className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-[13px] font-semibold text-warn transition active:scale-[0.98] disabled:opacity-60"
+            className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-[13px] font-semibold text-warn transition active:scale-[0.98] disabled:opacity-60"
           >
             <LogOut size={15} />
             {leaving ? "나가는 중..." : "방 나가기"}

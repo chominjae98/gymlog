@@ -36,6 +36,22 @@ async function getRoomDashboardBundle(
   return { monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount };
 }
 
+/**
+ * "홈"(공용 방)용 가벼운 데이터 묶음. 정산/목표/벌금 UI 자체를 안 보여주므로
+ * 그 데이터는 조회하지 않고, 달력에 필요한 이번 달 인증 기록만 가져온다.
+ */
+async function getHomeBundle(supabase: SupabaseClient<Database>, roomId: string, today: Date) {
+  const monthLogs = await getMonthLogs(supabase, today, roomId);
+  return {
+    monthLogs,
+    weeklyProgress: [],
+    myGoal: null,
+    finePerDay: 0,
+    exceptions: [],
+    roomMemberCount: 0,
+  };
+}
+
 export default async function Home({
   searchParams,
 }: PageProps<"/">) {
@@ -88,7 +104,7 @@ export default async function Home({
 
   const [profile, defaultRoomData, selectedRoomData] = await Promise.all([
     getProfile(supabase, user.id),
-    defaultRoom ? getRoomDashboardBundle(supabase, user.id, defaultRoom.id, today, weekStart) : null,
+    defaultRoom ? getHomeBundle(supabase, defaultRoom.id, today) : null,
     selectedRoom ? getRoomDashboardBundle(supabase, user.id, selectedRoom.id, today, weekStart) : null,
   ]);
 

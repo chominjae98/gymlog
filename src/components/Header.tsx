@@ -12,8 +12,8 @@ export function Header({
   onHeatmapClick,
 }: {
   profile: Profile;
-  myGoal: number | null;
-  onGoalClick: () => void;
+  myGoal?: number | null;
+  onGoalClick?: () => void;
   onHeatmapClick: () => void;
 }) {
   return (
@@ -48,13 +48,15 @@ export function Header({
           >
             <Flame size={16} />
           </button>
-          <button
-            onClick={onGoalClick}
-            className="flex items-center gap-1 rounded-full bg-surface-muted px-3 py-2 text-[12px] font-semibold text-foreground transition active:scale-95"
-          >
-            <Target size={13} className="text-brand-strong" />
-            {myGoal ? `주 ${myGoal}일` : "목표 설정"}
-          </button>
+          {onGoalClick && (
+            <button
+              onClick={onGoalClick}
+              className="flex items-center gap-1 rounded-full bg-surface-muted px-3 py-2 text-[12px] font-semibold text-foreground transition active:scale-95"
+            >
+              <Target size={13} className="text-brand-strong" />
+              {myGoal ? `주 ${myGoal}일` : "목표 설정"}
+            </button>
+          )}
           <HeaderMenu />
         </div>
       </div>

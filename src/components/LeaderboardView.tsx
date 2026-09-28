@@ -11,8 +11,8 @@ type Props = {
 };
 
 /**
- * 방과 무관한 전체 이용자 랭킹. 누적 인증 일수 기준으로, 어느 방에 속했는지와
- * 무관하게 전체 이용자 중 내 순위를 보여준다(사진·벌금 등 민감 정보는 없음).
+ * 전체 이용자 랭킹. "홈"(모두가 함께 쓰는 공용 방)에서의 누적 인증 일수 기준으로,
+ * 전체 이용자 중 내 순위를 보여준다(사진·벌금 등 민감 정보는 없음).
  */
 export function LeaderboardView({ currentUserId }: Props) {
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
@@ -37,7 +37,6 @@ export function LeaderboardView({ currentUserId }: Props) {
       <header className="safe-top sticky top-0 z-30 bg-background/80 px-4 pb-3 backdrop-blur-md">
         <div className="mx-auto max-w-md pt-3">
           <h1 className="text-[19px] font-bold text-foreground">전체 랭킹</h1>
-          <p className="mt-0.5 text-[12px] text-muted">방과 무관하게, 누적 인증 일수 기준이에요</p>
         </div>
       </header>
 

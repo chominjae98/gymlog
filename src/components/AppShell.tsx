@@ -67,6 +67,7 @@ export function AppShell(props: Props) {
             userId={props.userId}
             profile={props.profile}
             room={props.defaultRoom}
+            showFinance={false}
             roomMemberCount={props.defaultRoomData.roomMemberCount}
             initialMonthLogs={props.defaultRoomData.monthLogs}
             initialWeeklyProgress={props.defaultRoomData.weeklyProgress}
@@ -91,7 +92,6 @@ export function AppShell(props: Props) {
           weekStart={props.weekStart}
           joinCode={props.joinCode}
           onSelectRoom={selectRoom}
-          onClearSelection={clearRoomSelection}
           onRoomMutated={() => router.refresh()}
         />
       )}
@@ -104,7 +104,15 @@ export function AppShell(props: Props) {
           <TabButton
             label="내 방"
             active={tab === "rooms"}
-            onClick={() => setTab("rooms")}
+            onClick={() => {
+              // 이미 "내 방" 탭에서 특정 방을 보고 있을 때 다시 누르면 방 목록으로 돌아간다
+              // (다른 탭에 있을 때 누르면 그냥 탭 전환만 한다).
+              if (tab === "rooms" && props.selectedRoom) {
+                clearRoomSelection();
+              } else {
+                setTab("rooms");
+              }
+            }}
             icon={<Users size={20} />}
           />
           <TabButton

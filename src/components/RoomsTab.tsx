@@ -35,13 +35,13 @@ type Props = {
   weekStart: string;
   joinCode?: string;
   onSelectRoom: (roomId: string) => void;
-  onClearSelection: () => void;
   onRoomMutated: () => void;
 };
 
 /**
  * "내 방" 탭 — 친구들끼리 따로 만든 방(모두가 함께 쓰는 "홈"과는 별개)을
  * 목록으로 보여주고, 하나를 고르면 그 방 전용 대시보드로 들어간다.
+ * (목록으로 돌아가는 건 하단 탭의 "내 방"을 다시 누르면 된다 — AppShell이 처리)
  */
 export function RoomsTab({
   userId,
@@ -52,7 +52,6 @@ export function RoomsTab({
   weekStart,
   joinCode,
   onSelectRoom,
-  onClearSelection,
   onRoomMutated,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
@@ -65,8 +64,8 @@ export function RoomsTab({
         userId={userId}
         profile={profile}
         room={selectedRoom}
+        showFinance
         roomMemberCount={selectedRoomData.roomMemberCount}
-        onBack={onClearSelection}
         initialMonthLogs={selectedRoomData.monthLogs}
         initialWeeklyProgress={selectedRoomData.weeklyProgress}
         initialMyGoal={selectedRoomData.myGoal}
@@ -95,10 +94,6 @@ export function RoomsTab({
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
         <div>
-          <p className="mb-3 px-1 text-[12.5px] text-muted">
-            친구들과 따로 만든 방이에요. &ldquo;홈&rdquo;과 달리 초대한 사람들끼리만 볼 수 있어요.
-          </p>
-
           {rooms.length === 0 ? (
             <div className="surface-card flex flex-col items-center gap-2 px-6 py-10 text-center">
               <span className="text-[28px]">🤝</span>
@@ -126,7 +121,6 @@ export function RoomsTab({
                       </span>
                       <span className="min-w-0">
                         <p className="truncate text-[14px] font-semibold text-foreground">{room.name}</p>
-                        <p className="mt-0.5 text-[12px] text-muted">들어가서 보기</p>
                       </span>
                     </button>
                     <button
@@ -184,13 +178,7 @@ export function RoomsTab({
       {manageRoom && (
         <RoomManageSheet
           room={manageRoom}
-          isActive={false}
           onClose={() => setManageRoom(null)}
-          onSwitchClick={() => {
-            const roomId = manageRoom.id;
-            setManageRoom(null);
-            onSelectRoom(roomId);
-          }}
           onLeft={() => {
             setManageRoom(null);
             onRoomMutated();

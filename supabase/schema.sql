@@ -712,3 +712,35 @@ begin
   return new;
 end;
 $$;
+
+-- ------------------------------------------------------------
+-- 13. 전체 랭킹을 "홈"(공용 방) 기준으로 재정의 : is_default가 이 시점(섹션 12) 이후에야
+--     생기므로, 섹션 2의 최초 정의(모든 방을 합산)를 여기서 덮어쓴다. 친구들끼리 따로
+--     만든 방에서의 활동까지 합산하면, 그런 방이 없는 사람과 비교가 공정하지 않다 —
+--     모두가 똑같이 속한 "홈"에서의 기록만으로 비교해야 공정한 랭킹이 된다.
+-- ------------------------------------------------------------
+create or replace function public.get_global_leaderboard(limit_count integer default 100)
+returns table (
+  user_id uuid,
+  nickname text,
+  avatar_url text,
+  total_days bigint
+)
+language sql
+security definer set search_path = public
+stable
+as $$
+  select
+    p.id as user_id,
+    p.nickname,
+    p.avatar_url,
+    count(distinct wl.log_date) as total_days
+  from public.profiles p
+  join public.workout_logs wl on wl.user_id = p.id
+  join public.rooms r on r.id = wl.room_id and r.is_default
+  group by p.id, p.nickname, p.avatar_url
+  order by total_days desc, p.created_at asc
+  limit limit_count;
+$$;
+
+grant execute on function public.get_global_leaderboard(integer) to authenticated;
