@@ -1,0 +1,202 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import { Plus, Settings } from "lucide-react";
+import { Dashboard } from "@/components/Dashboard";
+import { HeaderMenu } from "@/components/HeaderMenu";
+import { CreateRoomSheet } from "@/components/CreateRoomSheet";
+import { JoinRoomSheet } from "@/components/JoinRoomSheet";
+import { RoomManageSheet } from "@/components/RoomManageSheet";
+import { getRoomAccentClasses } from "@/lib/room-colors";
+import type {
+  FineExceptionWithVotes,
+  Profile,
+  Room,
+  WeeklyProgress,
+  WorkoutLogWithProfile,
+} from "@/types/database";
+
+type RoomDashboardData = {
+  monthLogs: WorkoutLogWithProfile[];
+  weeklyProgress: WeeklyProgress[];
+  myGoal: number | null;
+  finePerDay: number;
+  exceptions: FineExceptionWithVotes[];
+  roomMemberCount: number;
+};
+
+type Props = {
+  userId: string;
+  profile: Profile;
+  rooms: Room[];
+  selectedRoom: Room | null;
+  selectedRoomData: RoomDashboardData | null;
+  weekStart: string;
+  joinCode?: string;
+  onSelectRoom: (roomId: string) => void;
+  onClearSelection: () => void;
+  onRoomMutated: () => void;
+};
+
+/**
+ * "내 방" 탭 — 친구들끼리 따로 만든 방(모두가 함께 쓰는 "홈"과는 별개)을
+ * 목록으로 보여주고, 하나를 고르면 그 방 전용 대시보드로 들어간다.
+ */
+export function RoomsTab({
+  userId,
+  profile,
+  rooms,
+  selectedRoom,
+  selectedRoomData,
+  weekStart,
+  joinCode,
+  onSelectRoom,
+  onClearSelection,
+  onRoomMutated,
+}: Props) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [showJoin, setShowJoin] = useState(!!joinCode);
+  const [manageRoom, setManageRoom] = useState<Room | null>(null);
+
+  if (selectedRoom && selectedRoomData) {
+    return (
+      <Dashboard
+        userId={userId}
+        profile={profile}
+        room={selectedRoom}
+        roomMemberCount={selectedRoomData.roomMemberCount}
+        onBack={onClearSelection}
+        initialMonthLogs={selectedRoomData.monthLogs}
+        initialWeeklyProgress={selectedRoomData.weeklyProgress}
+        initialMyGoal={selectedRoomData.myGoal}
+        weeklyFine={selectedRoomData.finePerDay}
+        weekStart={weekStart}
+        initialExceptions={selectedRoomData.exceptions}
+      />
+    );
+  }
+
+  return (
+    <div className="relative min-h-dvh overflow-x-hidden bg-background pb-40">
+      <header className="safe-top sticky top-0 z-30 bg-background/80 px-4 pb-3 backdrop-blur-md">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-2 pt-3">
+          <div className="flex min-w-0 items-center gap-2.5 py-1">
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-brand-soft ring-1 ring-border">
+              {profile.avatar_url && (
+                <Image src={profile.avatar_url} alt="" fill sizes="40px" className="object-cover" />
+              )}
+            </div>
+            <p className="truncate text-[15px] font-bold leading-tight text-foreground">내 방</p>
+          </div>
+          <HeaderMenu />
+        </div>
+      </header>
+
+      <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">
+        <div>
+          <p className="mb-3 px-1 text-[12.5px] text-muted">
+            친구들과 따로 만든 방이에요. &ldquo;홈&rdquo;과 달리 초대한 사람들끼리만 볼 수 있어요.
+          </p>
+
+          {rooms.length === 0 ? (
+            <div className="surface-card flex flex-col items-center gap-2 px-6 py-10 text-center">
+              <span className="text-[28px]">🤝</span>
+              <p className="text-[13px] font-semibold text-foreground">아직 만든 방이 없어요</p>
+              <p className="text-[12px] text-muted">
+                친구들과 방을 만들거나, 초대 코드로 참가해 보세요
+              </p>
+            </div>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {rooms.map((room) => {
+                const accent = getRoomAccentClasses(room.id);
+                return (
+                  <li key={room.id} className="surface-card flex items-center gap-2.5 p-2.5">
+                    <button
+                      onClick={() => onSelectRoom(room.id)}
+                      className="flex flex-1 items-center gap-3 rounded-2xl px-1.5 py-1.5 text-left transition active:scale-[0.99]"
+                    >
+                      <span
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${accent.soft}`}
+                      >
+                        <span className={`text-[16px] font-bold ${accent.strong}`}>
+                          {room.name.charAt(0)}
+                        </span>
+                      </span>
+                      <span className="min-w-0">
+                        <p className="truncate text-[14px] font-semibold text-foreground">{room.name}</p>
+                        <p className="mt-0.5 text-[12px] text-muted">들어가서 보기</p>
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setManageRoom(room)}
+                      aria-label={`${room.name} 방 관리`}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition active:scale-90"
+                    >
+                      <Settings size={16} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-[13px] font-semibold text-muted transition active:scale-[0.98]"
+            >
+              <Plus size={15} />
+              새 방 만들기
+            </button>
+            <button
+              onClick={() => setShowJoin(true)}
+              className="flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-[13px] font-semibold text-muted transition active:scale-[0.98]"
+            >
+              참가하기
+            </button>
+          </div>
+        </div>
+      </main>
+
+      {showCreate && (
+        <CreateRoomSheet
+          onClose={() => setShowCreate(false)}
+          onCreated={(roomId) => {
+            setShowCreate(false);
+            onSelectRoom(roomId);
+          }}
+        />
+      )}
+
+      {showJoin && (
+        <JoinRoomSheet
+          initialCode={joinCode}
+          onClose={() => setShowJoin(false)}
+          onJoined={(roomId) => {
+            setShowJoin(false);
+            onSelectRoom(roomId);
+          }}
+        />
+      )}
+
+      {manageRoom && (
+        <RoomManageSheet
+          room={manageRoom}
+          isActive={false}
+          onClose={() => setManageRoom(null)}
+          onSwitchClick={() => {
+            const roomId = manageRoom.id;
+            setManageRoom(null);
+            onSelectRoom(roomId);
+          }}
+          onLeft={() => {
+            setManageRoom(null);
+            onRoomMutated();
+          }}
+        />
+      )}
+    </div>
+  );
+}

@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Home, Trophy } from "lucide-react";
+import { Home, Trophy, Users } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
 import { LeaderboardView } from "@/components/LeaderboardView";
-import { EmptyHome } from "@/components/EmptyHome";
-import { RoomSwitcherSheet } from "@/components/RoomSwitcherSheet";
+import { RoomsTab } from "@/components/RoomsTab";
 import type {
   FineExceptionWithVotes,
   Profile,
@@ -15,67 +14,99 @@ import type {
   WorkoutLogWithProfile,
 } from "@/types/database";
 
+type RoomDashboardData = {
+  monthLogs: WorkoutLogWithProfile[];
+  weeklyProgress: WeeklyProgress[];
+  myGoal: number | null;
+  finePerDay: number;
+  exceptions: FineExceptionWithVotes[];
+  roomMemberCount: number;
+};
+
 type Props = {
   userId: string;
   profile: Profile;
-  room: Room | null;
-  rooms: Room[];
-  roomMemberCount: number;
-  initialMonthLogs: WorkoutLogWithProfile[];
-  initialWeeklyProgress: WeeklyProgress[];
-  initialMyGoal: number | null;
-  weeklyFine: number;
+  /** 모든 신규 가입자가 자동으로 속하는 공용 방 — "홈" 탭은 항상 이 방을 보여준다. */
+  defaultRoom: Room | null;
+  defaultRoomData: RoomDashboardData | null;
+  /** 친구들끼리 따로 만든 방들("내 방" 탭에서 다룸). */
+  otherRooms: Room[];
+  selectedRoom: Room | null;
+  selectedRoomData: RoomDashboardData | null;
   weekStart: string;
-  initialExceptions: FineExceptionWithVotes[];
   joinCode?: string;
 };
 
-type Tab = "home" | "leaderboard";
+type Tab = "home" | "rooms" | "leaderboard";
 
 /**
- * 하단 탭(홈/랭킹) + 방 전환 시트를 소유하는 최상위 쉘.
- * 방을 바꾸면 URL의 ?room= 쿼리를 바꿔 서버 컴포넌트(page.tsx)가 새 방 데이터를 다시 내려주게 한다.
+ * 하단 탭(홈/내 방/랭킹)을 소유하는 최상위 쉘.
+ * - 홈: 로그인한 모두가 함께 보는 공용 방(is_default)의 대시보드. 고정.
+ * - 내 방: 친구들끼리 따로 만든 방 목록 + 방을 골랐을 때 그 방의 대시보드.
+ * - 랭킹: 전체 이용자 랭킹(기존 그대로).
  */
 export function AppShell(props: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("home");
-  const [showRoomSwitcher, setShowRoomSwitcher] = useState(false);
 
-  function switchRoom(roomId: string) {
-    if (roomId === props.room?.id) return;
+  function selectRoom(roomId: string) {
     router.push(`/?room=${roomId}`);
+    router.refresh();
+  }
+
+  function clearRoomSelection() {
+    router.push("/");
     router.refresh();
   }
 
   return (
     <div className="min-h-dvh bg-background">
-      {tab === "home" ? (
-        props.room ? (
+      {tab === "home" &&
+        (props.defaultRoom && props.defaultRoomData ? (
           <Dashboard
             userId={props.userId}
             profile={props.profile}
-            room={props.room}
-            rooms={props.rooms}
-            roomMemberCount={props.roomMemberCount}
-            onSwitchRoomClick={() => setShowRoomSwitcher(true)}
-            onRoomCreated={switchRoom}
-            initialMonthLogs={props.initialMonthLogs}
-            initialWeeklyProgress={props.initialWeeklyProgress}
-            initialMyGoal={props.initialMyGoal}
-            weeklyFine={props.weeklyFine}
+            room={props.defaultRoom}
+            roomMemberCount={props.defaultRoomData.roomMemberCount}
+            initialMonthLogs={props.defaultRoomData.monthLogs}
+            initialWeeklyProgress={props.defaultRoomData.weeklyProgress}
+            initialMyGoal={props.defaultRoomData.myGoal}
+            weeklyFine={props.defaultRoomData.finePerDay}
             weekStart={props.weekStart}
-            initialExceptions={props.initialExceptions}
+            initialExceptions={props.defaultRoomData.exceptions}
           />
         ) : (
-          <EmptyHome profile={props.profile} joinCode={props.joinCode} />
-        )
-      ) : (
-        <LeaderboardView currentUserId={props.userId} />
+          <div className="flex min-h-dvh items-center justify-center px-6 text-center text-[13px] text-muted">
+            공용 홈 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+          </div>
+        ))}
+
+      {tab === "rooms" && (
+        <RoomsTab
+          userId={props.userId}
+          profile={props.profile}
+          rooms={props.otherRooms}
+          selectedRoom={props.selectedRoom}
+          selectedRoomData={props.selectedRoomData}
+          weekStart={props.weekStart}
+          joinCode={props.joinCode}
+          onSelectRoom={selectRoom}
+          onClearSelection={clearRoomSelection}
+          onRoomMutated={() => router.refresh()}
+        />
       )}
+
+      {tab === "leaderboard" && <LeaderboardView currentUserId={props.userId} />}
 
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-md items-stretch justify-around">
           <TabButton label="홈" active={tab === "home"} onClick={() => setTab("home")} icon={<Home size={20} />} />
+          <TabButton
+            label="내 방"
+            active={tab === "rooms"}
+            onClick={() => setTab("rooms")}
+            icon={<Users size={20} />}
+          />
           <TabButton
             label="랭킹"
             active={tab === "leaderboard"}
@@ -84,23 +115,6 @@ export function AppShell(props: Props) {
           />
         </div>
       </nav>
-
-      {showRoomSwitcher && props.room && (
-        <RoomSwitcherSheet
-          rooms={props.rooms}
-          activeRoomId={props.room.id}
-          onClose={() => setShowRoomSwitcher(false)}
-          onSelectRoom={switchRoom}
-          onRoomAdded={(roomId) => {
-            setShowRoomSwitcher(false);
-            switchRoom(roomId);
-          }}
-          onRoomLeft={() => {
-            setShowRoomSwitcher(false);
-            router.refresh();
-          }}
-        />
-      )}
     </div>
   );
 }

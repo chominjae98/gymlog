@@ -14,6 +14,27 @@ import { getFineExceptionsForWeek, getRoomMemberCount } from "@/lib/fine-excepti
 import { getMyRooms } from "@/lib/rooms-data";
 import { SUPABASE_CONFIGURED } from "@/lib/supabase-configured";
 import { getWeekStartKey, nowInSeoul } from "@/lib/date";
+import type { Database } from "@/types/database";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/** 방 하나의 대시보드(정산/오늘 인증/이번 주 현황 등)를 채우는 데 필요한 데이터 묶음. */
+async function getRoomDashboardBundle(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  roomId: string,
+  today: Date,
+  weekStart: string
+) {
+  const [monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount] = await Promise.all([
+    getMonthLogs(supabase, today, roomId),
+    getWeeklyProgress(supabase, today, roomId),
+    getMyWeeklyGoal(supabase, userId, today, roomId),
+    getFinePerDay(supabase, roomId),
+    getFineExceptionsForWeek(supabase, weekStart, roomId),
+    getRoomMemberCount(supabase, roomId),
+  ]);
+  return { monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount };
+}
 
 export default async function Home({
   searchParams,
@@ -50,29 +71,26 @@ export default async function Home({
   }
 
   const rooms = await getMyRooms(supabase, user.id);
+  // "홈" 탭은 항상 이 공용 방(모든 신규 가입자가 자동으로 속함)을 보여준다 —
+  // 로그인한 전체 이용자가 함께 보는 화면.
+  const defaultRoom = rooms.find((r) => r.is_default) ?? null;
+
+  // "참여 중인 방" 탭은 그 외(친구들끼리만 만든) 방들을 다룬다. ?room=으로 그중 하나가
+  // 명시돼 있으면 그 방의 대시보드를, 아니면 방 목록을 보여준다.
+  const otherRooms = rooms.filter((r) => !r.is_default);
   const requestedRoomId = typeof params?.room === "string" ? params.room : undefined;
-  const room = rooms.find((r) => r.id === requestedRoomId) ?? rooms[0] ?? null;
+  const selectedRoom = otherRooms.find((r) => r.id === requestedRoomId) ?? null;
+
   const joinCode = typeof params?.join === "string" ? params.join : undefined;
 
   const today = nowInSeoul();
   const weekStart = getWeekStartKey(today);
 
-  const [profile, roomData] = await Promise.all([
+  const [profile, defaultRoomData, selectedRoomData] = await Promise.all([
     getProfile(supabase, user.id),
-    room
-      ? Promise.all([
-          getMonthLogs(supabase, today, room.id),
-          getWeeklyProgress(supabase, today, room.id),
-          getMyWeeklyGoal(supabase, user.id, today, room.id),
-          getFinePerDay(supabase, room.id),
-          getFineExceptionsForWeek(supabase, weekStart, room.id),
-          getRoomMemberCount(supabase, room.id),
-        ])
-      : null,
+    defaultRoom ? getRoomDashboardBundle(supabase, user.id, defaultRoom.id, today, weekStart) : null,
+    selectedRoom ? getRoomDashboardBundle(supabase, user.id, selectedRoom.id, today, weekStart) : null,
   ]);
-
-  const [monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount] =
-    roomData ?? [[], [], null, 0, [], 0];
 
   return (
     <AppShell
@@ -86,15 +104,12 @@ export default async function Home({
           created_at: new Date().toISOString(),
         }
       }
-      room={room}
-      rooms={rooms}
-      roomMemberCount={roomMemberCount}
-      initialMonthLogs={monthLogs}
-      initialWeeklyProgress={weeklyProgress}
-      initialMyGoal={myGoal}
-      weeklyFine={finePerDay}
+      defaultRoom={defaultRoom}
+      defaultRoomData={defaultRoomData}
+      otherRooms={otherRooms}
+      selectedRoom={selectedRoom}
+      selectedRoomData={selectedRoomData}
       weekStart={weekStart}
-      initialExceptions={exceptions}
       joinCode={joinCode}
     />
   );

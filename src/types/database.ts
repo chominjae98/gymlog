@@ -66,6 +66,8 @@ export type Room = {
   fine_per_day: number;
   created_by: string | null;
   created_at: string;
+  /** 모든 신규 가입자가 자동으로 속하는 공용 방(로그인한 전체 이용자가 함께 보는 "홈"). */
+  is_default: boolean;
 };
 
 export type RoomMember = {
