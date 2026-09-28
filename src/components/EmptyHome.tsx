@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Plus } from "lucide-react";
 import { CalendarGrid } from "@/components/CalendarGrid";
@@ -20,8 +21,37 @@ type Props = {
  * 방 만들기/참가하기 시트가 그 위에 뜬다(화면 전체가 바뀌지 않는다).
  */
 export function EmptyHome({ profile, joinCode }: Props) {
+  const router = useRouter();
   const [monthDate, setMonthDate] = useState(nowInSeoul());
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // 앱(웹뷰로 감싼 PWA 형태)을 강제종료했다가 다시 열면 OS/웹뷰가 이전 화면을
+  // 네트워크 요청 없이 그대로 복원하는 경우가 있다. 방을 새로 만들거나 초대
+  // 코드로 참가한 뒤 다시 홈으로 돌아왔을 때 이 "방 없음" 화면이 캐시된 채로
+  // 남아있지 않도록, Dashboard와 동일하게 포그라운드 전환 시점마다 새로고침한다.
+  useEffect(() => {
+    let lastRefresh = Date.now();
+    const MIN_INTERVAL_MS = 5000;
+
+    function refreshThrottled() {
+      const now = Date.now();
+      if (now - lastRefresh < MIN_INTERVAL_MS) return;
+      lastRefresh = now;
+      router.refresh();
+    }
+    function handlePageShow() {
+      refreshThrottled();
+    }
+    function handleVisibility() {
+      if (document.visibilityState === "visible") refreshThrottled();
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [router]);
 
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-background pb-40">
