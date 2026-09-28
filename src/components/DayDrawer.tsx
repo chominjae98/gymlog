@@ -155,13 +155,13 @@ export function DayDrawer({
 
                   <PhotoCarousel photoUrls={log.photo_urls} nickname={log.profile.nickname} />
 
-                  <ReactionBar logId={log.id} currentUserId={currentUserId} />
-
                   {log.memo && (
-                    <p className="mx-4 mt-3.5 rounded-2xl bg-surface-muted px-3.5 py-3 text-[13px] leading-relaxed text-foreground">
+                    <p className="px-4 pt-3.5 text-[13px] leading-relaxed text-foreground">
                       {log.memo}
                     </p>
                   )}
+
+                  <ReactionBar logId={log.id} currentUserId={currentUserId} />
 
                   <PostSocialPanel logId={log.id} currentUserId={currentUserId} />
                 </article>
