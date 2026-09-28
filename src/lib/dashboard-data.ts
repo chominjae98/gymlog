@@ -98,11 +98,19 @@ export function computeWeeklyStatus(
   return "at-risk";
 }
 
-/** 오늘 기준 이번 주, 멤버별 목표 달성 현황 (벌금 위기 계산 포함) */
+/**
+ * 오늘 기준 이번 주, 멤버별 목표 달성 현황 (벌금 위기 계산 포함).
+ *
+ * roomId: 멤버 목록/인증 기록/벌금 예외를 조회할 방(이 방 활동 기준으로 achievedDays가 계산됨).
+ * goalRoomId: 주간 목표(target_days)를 조회할 방. 기본은 roomId와 같지만, "주간 목표는
+ *   방마다 따로 세우는 게 아니라 사람마다 하나(모두가 함께 쓰는 홈 기준)"로 통일하면서
+ *   친구 방 대시보드에서도 항상 홈에 설정된 같은 목표를 보여주기 위해 분리했다.
+ */
 export async function getWeeklyProgress(
   supabase: Client,
   today: Date,
-  roomId: string
+  roomId: string,
+  goalRoomId: string = roomId
 ): Promise<WeeklyProgress[]> {
   const weekStart = getWeekStartKey(today);
   const { start, end } = getWeekRangeKeys(today);
@@ -117,7 +125,7 @@ export async function getWeeklyProgress(
       supabase
         .from("weekly_goals")
         .select("user_id, target_days")
-        .eq("room_id", roomId)
+        .eq("room_id", goalRoomId)
         .eq("week_start", weekStart),
       supabase
         .from("workout_logs")

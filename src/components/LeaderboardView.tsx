@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getGlobalLeaderboard } from "@/lib/rooms-data";
 import type { LeaderboardEntry } from "@/types/database";
@@ -48,7 +49,6 @@ export function LeaderboardView({ currentUserId }: Props) {
       <header className="safe-top sticky top-0 z-30 bg-background/80 px-4 pb-3 backdrop-blur-md">
         <div className="mx-auto max-w-md pt-3">
           <h1 className="text-[19px] font-bold text-foreground">전체 랭킹</h1>
-          <p className="mt-0.5 text-[12px] text-muted">홈에서 누적 인증한 일수 기준이에요</p>
         </div>
       </header>
 
@@ -90,9 +90,9 @@ export function LeaderboardView({ currentUserId }: Props) {
                           )}
                         </div>
                         <span
-                          className={`absolute -bottom-1 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full text-[10px] font-bold text-white ${style.badge}`}
+                          className={`absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-white ring-2 ring-surface ${style.badge}`}
                         >
-                          {i + 1}
+                          <Trophy size={12} fill="currentColor" />
                         </span>
                       </div>
                       <p className="mt-1 max-w-[72px] truncate text-center text-[12.5px] font-semibold text-foreground">

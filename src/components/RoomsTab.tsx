@@ -38,6 +38,7 @@ type Props = {
   onRoomMutated: () => void;
   isNavigating?: boolean;
   navigatingRoomId?: string | null;
+  goalRoomId: string | null;
 };
 
 /**
@@ -57,6 +58,7 @@ export function RoomsTab({
   onRoomMutated,
   isNavigating = false,
   navigatingRoomId = null,
+  goalRoomId,
 }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(!!joinCode);
@@ -69,6 +71,7 @@ export function RoomsTab({
         profile={profile}
         room={selectedRoom}
         showFinance
+        goalRoomId={goalRoomId}
         roomMemberCount={selectedRoomData.roomMemberCount}
         initialMonthLogs={selectedRoomData.monthLogs}
         initialWeeklyProgress={selectedRoomData.weeklyProgress}

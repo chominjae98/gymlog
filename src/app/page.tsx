@@ -17,18 +17,23 @@ import { getWeekStartKey, nowInSeoul } from "@/lib/date";
 import type { Database } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** 방 하나의 대시보드(정산/오늘 인증/이번 주 현황 등)를 채우는 데 필요한 데이터 묶음. */
+/**
+ * 방 하나의 대시보드(정산/오늘 인증/이번 주 현황 등)를 채우는 데 필요한 데이터 묶음.
+ * goalRoomId: 주간 목표는 방마다 따로가 아니라 "홈" 기준으로 통일해서 보여주므로,
+ * 그 목표를 조회할 방(=홈)의 id를 별도로 받는다. getWeeklyProgress 주석 참고.
+ */
 async function getRoomDashboardBundle(
   supabase: SupabaseClient<Database>,
   userId: string,
   roomId: string,
   today: Date,
-  weekStart: string
+  weekStart: string,
+  goalRoomId: string
 ) {
   const [monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount] = await Promise.all([
     getMonthLogs(supabase, today, roomId),
-    getWeeklyProgress(supabase, today, roomId),
-    getMyWeeklyGoal(supabase, userId, today, roomId),
+    getWeeklyProgress(supabase, today, roomId, goalRoomId),
+    getMyWeeklyGoal(supabase, userId, today, goalRoomId),
     getFinePerDay(supabase, roomId),
     getFineExceptionsForWeek(supabase, weekStart, roomId),
     getRoomMemberCount(supabase, roomId),
@@ -37,18 +42,30 @@ async function getRoomDashboardBundle(
 }
 
 /**
- * "홈"(공용 방)용 가벼운 데이터 묶음. 정산/목표/벌금 UI 자체를 안 보여주므로
- * 그 데이터는 조회하지 않고, 달력에 필요한 이번 달 인증 기록만 가져온다.
+ * "홈"(공용 방)용 데이터 묶음. 정산/벌금 UI는 안 보여주지만, 주간 목표 설정과
+ * "이번 주 리포트"(누가 가장 많이 운동했는지·목표 달성률)는 홈 화면에도 필요하므로
+ * weeklyProgress/myGoal도 함께 가져온다. 홈 자신이 곧 주간 목표의 기준 방이므로
+ * getWeeklyProgress/getMyWeeklyGoal 둘 다 goalRoomId 없이(=roomId 자기 자신 기준) 부른다.
  */
-async function getHomeBundle(supabase: SupabaseClient<Database>, roomId: string, today: Date) {
-  const monthLogs = await getMonthLogs(supabase, today, roomId);
+async function getHomeBundle(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  roomId: string,
+  today: Date
+) {
+  const [monthLogs, weeklyProgress, myGoal, roomMemberCount] = await Promise.all([
+    getMonthLogs(supabase, today, roomId),
+    getWeeklyProgress(supabase, today, roomId),
+    getMyWeeklyGoal(supabase, userId, today, roomId),
+    getRoomMemberCount(supabase, roomId),
+  ]);
   return {
     monthLogs,
-    weeklyProgress: [],
-    myGoal: null,
+    weeklyProgress,
+    myGoal,
     finePerDay: 0,
     exceptions: [],
-    roomMemberCount: 0,
+    roomMemberCount,
   };
 }
 
@@ -102,10 +119,16 @@ export default async function Home({
   const today = nowInSeoul();
   const weekStart = getWeekStartKey(today);
 
+  // 주간 목표는 방마다 따로가 아니라 사람마다 하나, "홈" 기준으로 통일해서 보여준다.
+  // 홈 방이 없는(설정 누락 등) 예외적인 경우엔 그 방 자기 자신을 기준으로 폴백한다.
+  const goalRoomId = defaultRoom?.id ?? selectedRoom?.id ?? null;
+
   const [profile, defaultRoomData, selectedRoomData] = await Promise.all([
     getProfile(supabase, user.id),
-    defaultRoom ? getHomeBundle(supabase, defaultRoom.id, today) : null,
-    selectedRoom ? getRoomDashboardBundle(supabase, user.id, selectedRoom.id, today, weekStart) : null,
+    defaultRoom ? getHomeBundle(supabase, user.id, defaultRoom.id, today) : null,
+    selectedRoom && goalRoomId
+      ? getRoomDashboardBundle(supabase, user.id, selectedRoom.id, today, weekStart, goalRoomId)
+      : null,
   ]);
 
   return (

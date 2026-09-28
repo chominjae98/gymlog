@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Plus, Receipt } from "lucide-react";
+import { Flame, Plus, Receipt, Target } from "lucide-react";
 import { Header } from "@/components/Header";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { DayDrawer } from "@/components/DayDrawer";
@@ -24,15 +24,7 @@ import {
   uniqueLogsByUser,
 } from "@/lib/dashboard-data";
 import { fetchMonthLogs } from "@/lib/client-data";
-import {
-  formatMonthTitle,
-  formatTime,
-  getWeekDates,
-  isSameMonthGuard,
-  nowInSeoul,
-  toDateKey,
-  WEEKDAY_LABELS,
-} from "@/lib/date";
+import { formatMonthTitle, isSameMonthGuard, nowInSeoul } from "@/lib/date";
 import type {
   FineExceptionWithVotes,
   Profile,
@@ -49,6 +41,9 @@ type Props = {
    * 모두가 함께 쓰는 공용 홈(is_default 방)에는 벌금이라는 개념 자체가 없어 false로 둔다.
    * 친구들끼리 따로 만든 방("내 방" 탭)에서는 true. */
   showFinance: boolean;
+  /** 주간 목표를 저장/조회할 방(=홈). null이면 홈 방을 찾을 수 없는 예외 상황이라
+   * 목표 설정 UI 자체를 숨긴다. WeeklyGoalSheet의 goalRoomId 설명 참고. */
+  goalRoomId: string | null;
   roomMemberCount: number;
   initialMonthLogs: WorkoutLogWithProfile[];
   initialWeeklyProgress: WeeklyProgress[];
@@ -63,6 +58,7 @@ export function Dashboard({
   profile,
   room,
   showFinance,
+  goalRoomId,
   roomMemberCount,
   initialMonthLogs,
   initialWeeklyProgress,
@@ -138,9 +134,9 @@ export function Dashboard({
   const logsByDate = groupLogsByDate(monthLogs);
   const tKey = todayKey(today);
 
-  // "오늘"에 관한 통계(오늘 인증 현황 카드, 아바타 미리보기, 주간 활동 바, 최근 피드)는
-  // 달력에서 다른 달을 넘겨봐도(monthLogs가 그 달의 기록으로 바뀌어도) 항상 실제 오늘 기준으로
-  // 정확해야 하므로, 달력 탐색과 무관하게 서버가 내려준 initialMonthLogs를 기준으로 삼는다.
+  // "오늘"에 관한 통계(오늘 인증 현황 카드, 아바타 미리보기)는 달력에서 다른 달을
+  // 넘겨봐도(monthLogs가 그 달의 기록으로 바뀌어도) 항상 실제 오늘 기준으로 정확해야 하므로,
+  // 달력 탐색과 무관하게 서버가 내려준 initialMonthLogs를 기준으로 삼는다.
   // 단, 방금 "+"로 올린 사진이 오늘 날짜라면(달력을 다른 달로 넘긴 상태여도) 새로고침을
   // 기다리지 않고 바로 반영되도록 낙관적 기록만 예외적으로 합쳐준다.
   const homeLogs =
@@ -151,8 +147,6 @@ export function Dashboard({
   const todayLogs = homeLogsByDate.get(tKey) ?? [];
   const todayLogsCount = countUniquePeople(todayLogs);
   const todayAvatarLogs = uniqueLogsByUser(todayLogs);
-  const recentFeedLogs = homeLogs.slice(0, 2);
-  const weekDates = getWeekDates(today);
 
   // 앱(웹뷰로 감싼 PWA 형태)을 강제종료했다가 다시 열면, OS/웹뷰가 이전 화면을
   // 네트워크 요청 없이 그대로(bfcache 또는 그에 준하는 캐시) 복원하는 경우가 있다.
@@ -195,8 +189,8 @@ export function Dashboard({
 
       <Header
         profile={profile}
-        myGoal={showFinance ? myGoal : undefined}
-        onGoalClick={showFinance ? () => setShowGoal(true) : undefined}
+        myGoal={goalRoomId ? myGoal : undefined}
+        onGoalClick={goalRoomId ? () => setShowGoal(true) : undefined}
         onHeatmapClick={() => setShowHeatmap(true)}
       />
 
@@ -243,13 +237,7 @@ export function Dashboard({
           </span>
         </button>
 
-        {!showFinance && (
-          <WeeklyActivityBar weekDates={weekDates} logsByDate={homeLogsByDate} todayKey={tKey} />
-        )}
-
-        {!showFinance && recentFeedLogs.length > 0 && (
-          <RecentFeedPreview logs={recentFeedLogs} onSelect={setSelectedKey} />
-        )}
+        {!showFinance && <WeeklyReport progress={weeklyProgress} currentUserId={userId} />}
 
         {showFinance && (
           <>
@@ -309,10 +297,10 @@ export function Dashboard({
         />
       )}
 
-      {showGoal && (
+      {showGoal && goalRoomId && (
         <WeeklyGoalSheet
           userId={userId}
-          roomId={roomId}
+          goalRoomId={goalRoomId}
           currentGoal={myGoal}
           onClose={() => setShowGoal(false)}
           onSaved={(targetDays) => {
@@ -450,94 +438,110 @@ function AvatarStack({
   );
 }
 
-/** 이번 주(월~일) 요일별 인증 인원수를 막대로 보여준다. */
-function WeeklyActivityBar({
-  weekDates,
-  logsByDate,
-  todayKey,
+/**
+ * 홈 화면 전용 "이번 주 리포트". 홈은 전체 이용자가 함께 기록을 올리는 곳이므로,
+ * 개인 통계 대신 "이번 주에 가장 많이 운동한 사람"과 "목표 달성률이 높은 사람"(예:
+ * 주 4일 목표를 다 채웠으면 100%)을 전체 이용자 기준으로 보여준다.
+ */
+function WeeklyReport({
+  progress,
+  currentUserId,
 }: {
-  weekDates: Date[];
-  logsByDate: Map<string, WorkoutLogWithProfile[]>;
-  todayKey: string;
+  progress: WeeklyProgress[];
+  currentUserId: string;
 }) {
-  const counts = weekDates.map((date) => {
-    const key = toDateKey(date);
-    return { key, count: countUniquePeople(logsByDate.get(key) ?? []) };
-  });
-  const maxCount = Math.max(1, ...counts.map((c) => c.count));
+  const mostWorkouts = [...progress]
+    .filter((p) => p.achievedDays > 0)
+    .sort((a, b) => b.achievedDays - a.achievedDays)
+    .slice(0, 3);
+
+  const goalAchievers = progress
+    .filter((p) => p.targetDays != null && p.targetDays > 0)
+    .map((p) => ({ ...p, rate: Math.min(1, p.achievedDays / p.targetDays!) }))
+    .sort((a, b) => b.rate - a.rate || b.achievedDays - a.achievedDays)
+    .slice(0, 3);
 
   return (
-    <div className="surface-card px-4 py-4">
-      <p className="text-[13px] font-semibold text-foreground">이번 주 활동</p>
-      <div className="mt-3 flex items-end justify-between gap-1.5">
-        {counts.map(({ key, count }, i) => {
-          const isToday = key === todayKey;
-          const isFuture = key > todayKey;
-          const heightPct = count > 0 ? Math.max(14, Math.round((count / maxCount) * 100)) : 6;
-          return (
-            <div key={key} className="flex flex-1 flex-col items-center gap-1.5">
-              <span className={`text-[11px] font-bold ${isToday ? "text-brand-strong" : "text-muted"}`}>
-                {count > 0 ? count : ""}
-              </span>
-              <div className="flex h-16 w-full items-end justify-center">
-                <div
-                  className={[
-                    "w-full max-w-[22px] rounded-full transition-all",
-                    isFuture || count === 0
-                      ? "bg-surface-muted"
-                      : isToday
-                        ? "bg-brand"
-                        : "bg-brand/50",
-                  ].join(" ")}
-                  style={{ height: `${heightPct}%` }}
-                />
+    <div className="surface-card flex flex-col gap-5 px-4 py-4">
+      <p className="text-[13px] font-semibold text-foreground">이번 주 리포트</p>
+
+      {mostWorkouts.length === 0 && goalAchievers.length === 0 ? (
+        <p className="text-[12.5px] text-muted">
+          아직 이번 주 기록이 없어요. 가장 먼저 운동을 인증해 보세요!
+        </p>
+      ) : (
+        <>
+          {mostWorkouts.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+                <Flame size={13} className="text-warn" />
+                가장 많이 운동한 사람
               </div>
-              <span className={`text-[11px] font-medium ${isToday ? "font-bold text-brand-strong" : "text-muted"}`}>
-                {WEEKDAY_LABELS[i]}
-              </span>
+              <ul className="flex flex-col gap-2.5">
+                {mostWorkouts.map((p, i) => (
+                  <ReportRow
+                    key={p.profile.id}
+                    rank={i + 1}
+                    nickname={p.profile.nickname}
+                    avatarUrl={p.profile.avatar_url}
+                    isMe={p.profile.id === currentUserId}
+                    stat={`${p.achievedDays}일`}
+                  />
+                ))}
+              </ul>
             </div>
-          );
-        })}
-      </div>
+          )}
+
+          {goalAchievers.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+                <Target size={13} className="text-brand-strong" />
+                목표 달성률 TOP
+              </div>
+              <ul className="flex flex-col gap-2.5">
+                {goalAchievers.map((p, i) => (
+                  <ReportRow
+                    key={p.profile.id}
+                    rank={i + 1}
+                    nickname={p.profile.nickname}
+                    avatarUrl={p.profile.avatar_url}
+                    isMe={p.profile.id === currentUserId}
+                    stat={`${Math.round(p.rate * 100)}%`}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-/** 가장 최근에 올라온 인증 기록 1~2건을 미리보기 카드로 보여준다. 누르면 그 날짜 기록을 연다. */
-function RecentFeedPreview({
-  logs,
-  onSelect,
+function ReportRow({
+  rank,
+  nickname,
+  avatarUrl,
+  isMe,
+  stat,
 }: {
-  logs: WorkoutLogWithProfile[];
-  onSelect: (dateKey: string) => void;
+  rank: number;
+  nickname: string;
+  avatarUrl: string | null;
+  isMe: boolean;
+  stat: string;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="px-1 text-[13px] font-semibold text-foreground">최근 인증</p>
-      <div className="flex flex-col gap-2">
-        {logs.map((log) => (
-          <button
-            key={log.id}
-            onClick={() => onSelect(log.log_date)}
-            className="surface-card flex items-center gap-3 p-2.5 text-left transition active:scale-[0.99]"
-          >
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-surface-muted">
-              {log.photo_urls[0] && (
-                <Image src={log.photo_urls[0]} alt="" fill sizes="56px" className="object-cover" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="truncate text-[13px] font-semibold text-foreground">
-                  {log.profile.nickname}
-                </span>
-                <span className="shrink-0 text-[11px] text-muted">{formatTime(log.created_at)}</span>
-              </div>
-              <p className="mt-0.5 truncate text-[12px] text-muted">{log.memo || "오늘도 운동 완료!"}</p>
-            </div>
-          </button>
-        ))}
+    <li className="flex items-center gap-2.5">
+      <span className="w-4 shrink-0 text-center text-[12px] font-bold text-muted">{rank}</span>
+      <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full bg-surface-muted">
+        {avatarUrl && <Image src={avatarUrl} alt="" fill sizes="28px" className="object-cover" />}
       </div>
-    </div>
+      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+        {nickname}
+        {isMe && <span className="ml-1 text-[11px] font-medium text-brand-strong">나</span>}
+      </span>
+      <span className="shrink-0 text-[12.5px] font-bold text-foreground">{stat}</span>
+    </li>
   );
 }

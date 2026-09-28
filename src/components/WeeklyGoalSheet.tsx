@@ -10,7 +10,10 @@ import { useToast } from "@/components/ToastProvider";
 
 type Props = {
   userId: string;
-  roomId: string;
+  /** 주간 목표를 저장할 방. 방마다 따로가 아니라 사람마다 하나(홈 기준)로 통일돼 있어,
+   * 홈에서 열든 친구 방에서 열든 항상 같은(홈) room_id를 받는다 — Dashboard의
+   * goalRoomId 설명 참고. */
+  goalRoomId: string;
   currentGoal: number | null;
   onClose: () => void;
   onSaved: (targetDays: number) => void;
@@ -19,7 +22,7 @@ type Props = {
 const MIN_DAYS = 1;
 const MAX_DAYS = 7;
 
-export function WeeklyGoalSheet({ userId, roomId, currentGoal, onClose, onSaved }: Props) {
+export function WeeklyGoalSheet({ userId, goalRoomId, currentGoal, onClose, onSaved }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
@@ -38,7 +41,7 @@ export function WeeklyGoalSheet({ userId, roomId, currentGoal, onClose, onSaved 
       .upsert(
         {
           user_id: userId,
-          room_id: roomId,
+          room_id: goalRoomId,
           week_start: weekStart,
           target_days: selected,
         },

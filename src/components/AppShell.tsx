@@ -54,6 +54,10 @@ export function AppShell(props: Props) {
   // 느껴진 원인. isPending으로 그 왕복이 끝나기 전까지 즉시 로딩 피드백을 보여준다.
   const [isPending, startTransition] = useTransition();
   const [pendingRoomId, setPendingRoomId] = useState<string | null>(null);
+  // 주간 목표는 방마다 따로가 아니라 사람마다 하나, "홈" 기준으로 통일해서 보여준다
+  // (Dashboard의 goalRoomId 설명 참고). 홈 방이 아직 없는 예외적인 상황(설정 누락 등)엔
+  // null로 두어 목표 설정 버튼 자체를 숨긴다.
+  const goalRoomId = props.defaultRoom?.id ?? null;
 
   function selectRoom(roomId: string) {
     setPendingRoomId(roomId);
@@ -78,6 +82,7 @@ export function AppShell(props: Props) {
             profile={props.profile}
             room={props.defaultRoom}
             showFinance={false}
+            goalRoomId={goalRoomId}
             roomMemberCount={props.defaultRoomData.roomMemberCount}
             initialMonthLogs={props.defaultRoomData.monthLogs}
             initialWeeklyProgress={props.defaultRoomData.weeklyProgress}
@@ -99,6 +104,7 @@ export function AppShell(props: Props) {
           rooms={props.otherRooms}
           selectedRoom={props.selectedRoom}
           selectedRoomData={props.selectedRoomData}
+          goalRoomId={goalRoomId}
           weekStart={props.weekStart}
           joinCode={props.joinCode}
           onSelectRoom={selectRoom}
