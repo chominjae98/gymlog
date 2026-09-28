@@ -439,9 +439,10 @@ function AvatarStack({
 }
 
 /**
- * 홈 화면 전용 "이번 주 리포트". 홈은 전체 이용자가 함께 기록을 올리는 곳이므로,
+ * 홈 화면 전용 "주간 리포트". 홈은 전체 이용자가 함께 기록을 올리는 곳이므로,
  * 개인 통계 대신 "이번 주에 가장 많이 운동한 사람"과 "목표 달성률이 높은 사람"(예:
- * 주 4일 목표를 다 채웠으면 100%)을 전체 이용자 기준으로 보여준다.
+ * 주 4일 목표에 3일 가면 75%, 4일 다 채우면 100%, 5일이면 125% — 초과분도 그대로
+ * 반영한다)을 전체 이용자 기준으로 보여준다.
  */
 function WeeklyReport({
   progress,
@@ -457,13 +458,13 @@ function WeeklyReport({
 
   const goalAchievers = progress
     .filter((p) => p.targetDays != null && p.targetDays > 0)
-    .map((p) => ({ ...p, rate: Math.min(1, p.achievedDays / p.targetDays!) }))
+    .map((p) => ({ ...p, rate: p.achievedDays / p.targetDays! }))
     .sort((a, b) => b.rate - a.rate || b.achievedDays - a.achievedDays)
     .slice(0, 3);
 
   return (
     <div className="surface-card flex flex-col gap-5 px-4 py-4">
-      <p className="text-[13px] font-semibold text-foreground">이번 주 리포트</p>
+      <p className="text-[13px] font-semibold text-foreground">주간 리포트</p>
 
       {mostWorkouts.length === 0 && goalAchievers.length === 0 ? (
         <p className="text-[12.5px] text-muted">
