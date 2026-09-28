@@ -258,6 +258,7 @@ alter table public.weekly_goals
   add column if not exists room_id uuid references public.rooms (id) on delete cascade;
 
 alter table public.weekly_goals drop constraint if exists weekly_goals_user_id_week_start_key;
+alter table public.weekly_goals drop constraint if exists weekly_goals_user_id_week_start_room_id_key;
 alter table public.weekly_goals
   add constraint weekly_goals_user_id_week_start_room_id_key unique (user_id, week_start, room_id);
 
