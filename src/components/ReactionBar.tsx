@@ -55,7 +55,7 @@ export function ReactionBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3.5">
+    <div className="flex flex-wrap items-center gap-3 px-4 pt-3.5">
       {REACTION_EMOJIS.map((emoji) => {
         const count = summary.counts[emoji] ?? 0;
         const isMine = summary.myEmoji === emoji;
@@ -64,12 +64,9 @@ export function ReactionBar({
             key={emoji}
             onClick={() => handleTap(emoji)}
             disabled={isOptimistic}
-            className={[
-              "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[13px] leading-none transition active:scale-90 disabled:opacity-50",
-              isMine ? "bg-brand-soft ring-1 ring-brand/40" : "bg-surface-muted",
-            ].join(" ")}
+            className="flex items-center gap-1 text-[19px] leading-none transition active:scale-90 disabled:opacity-50"
           >
-            <span>{emoji}</span>
+            <span className={isMine ? "scale-110" : ""}>{emoji}</span>
             {count > 0 && (
               <span className={`text-[11px] font-bold ${isMine ? "text-brand-strong" : "text-muted"}`}>
                 {count}

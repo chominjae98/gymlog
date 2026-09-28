@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { hasUnreadNotifications } from "@/lib/notifications-data";
@@ -37,7 +38,13 @@ export function NotificationBell({ userId }: { userId: string }) {
         )}
       </button>
 
-      {open && <NotificationSheet userId={userId} onClose={() => setOpen(false)} />}
+      {/* Header가 sticky + backdrop-blur라 그 안에서 position:fixed를 쓰면 브라우저가
+          뷰포트가 아니라 Header를 기준으로 잡아버려(backdrop-filter가 fixed 자손의
+          containing block을 만듦) 알림창이 화면 상단에 눌린 것처럼 보였다.
+          body로 포털을 띄워 이 문제를 근본적으로 피한다. */}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(<NotificationSheet userId={userId} onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

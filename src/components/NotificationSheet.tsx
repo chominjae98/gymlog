@@ -88,9 +88,16 @@ export function NotificationSheet({ userId, onClose }: Props) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] leading-relaxed text-foreground">
-                      <span className="font-semibold">{n.actor.nickname}</span>님이 댓글을 남겼어요
-                      {n.comment && (
-                        <span className="text-muted">: &ldquo;{n.comment.body}&rdquo;</span>
+                      <span className="font-semibold">{n.actor.nickname}</span>
+                      {n.type === "reaction" ? (
+                        <>님이 회원님 게시물에 공감했어요{n.reaction && ` ${n.reaction.emoji}`}</>
+                      ) : (
+                        <>
+                          님이 댓글을 남겼어요
+                          {n.comment && (
+                            <span className="text-muted">: &ldquo;{n.comment.body}&rdquo;</span>
+                          )}
+                        </>
                       )}
                     </p>
                     <p className="mt-0.5 text-[11px] text-muted">{formatTime(n.created_at)}</p>

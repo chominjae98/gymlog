@@ -915,3 +915,37 @@ as $$
 $$;
 
 grant execute on function public.get_leaderboard(text, integer) to authenticated;
+
+-- ------------------------------------------------------------
+-- 18. 리액션 알림 : 이모지 리액션을 남기거나 바꾸면(insert/update) 게시물 주인에게도
+--     알림을 보낸다. 취소(delete)는 알림을 보내지 않는다. notifications.type에
+--     'reaction'을 추가하고, 어떤 리액션인지 알 수 있도록 reaction_id를 더한다.
+-- ------------------------------------------------------------
+alter table public.notifications add column if not exists reaction_id uuid references public.workout_log_reactions (id) on delete cascade;
+
+alter table public.notifications drop constraint if exists notifications_type_check;
+alter table public.notifications add constraint notifications_type_check check (type in ('comment', 'reaction'));
+
+create or replace function public.notify_on_reaction()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  post_owner_id uuid;
+begin
+  select user_id into post_owner_id from public.workout_logs where id = new.log_id;
+
+  if post_owner_id is not null and post_owner_id <> new.user_id then
+    insert into public.notifications (user_id, actor_id, log_id, reaction_id, type)
+    values (post_owner_id, new.user_id, new.log_id, new.id, 'reaction');
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_reaction_notify on public.workout_log_reactions;
+create trigger on_reaction_notify
+  after insert or update on public.workout_log_reactions
+  for each row execute procedure public.notify_on_reaction();

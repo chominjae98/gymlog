@@ -254,15 +254,17 @@ export type AppNotification = {
   actor_id: string;
   log_id: string;
   comment_id: string | null;
-  type: "comment";
+  reaction_id: string | null;
+  type: "comment" | "reaction";
   created_at: string;
   read_at: string | null;
 };
 
-/** 화면에서 쓰는, 알림을 유발한 사람의 프로필과 댓글 내용이 join 된 알림 */
+/** 화면에서 쓰는, 알림을 유발한 사람의 프로필과 댓글/리액션 내용이 join 된 알림 */
 export type NotificationWithActor = AppNotification & {
   actor: Pick<Profile, "id" | "nickname" | "avatar_url">;
   comment: { body: string } | null;
+  reaction: { emoji: string } | null;
 };
 
 /** 특정 달(월) 안에서, 한 사람의 주차별 정산 내역 */

@@ -4,15 +4,16 @@ import type { Database, NotificationWithActor } from "@/types/database";
 type Client = SupabaseClient<Database>;
 
 /**
- * 내 알림 목록(최근 30개). 댓글을 남긴 사람의 프로필과 댓글 본문을 함께 가져온다.
- * notifications의 user_id/actor_id가 둘 다 profiles를 참조하고 있어, 어느 쪽으로
- * join할지 애매하지 않도록 외래키 이름(notifications_actor_id_fkey)을 명시한다.
+ * 내 알림 목록(최근 30개). 댓글/리액션을 남긴 사람의 프로필과 그 내용(댓글 본문 또는
+ * 리액션 이모지)을 함께 가져온다. notifications의 user_id/actor_id가 둘 다 profiles를
+ * 참조하고 있어, 어느 쪽으로 join할지 애매하지 않도록 외래키 이름
+ * (notifications_actor_id_fkey)을 명시한다.
  */
 export async function getMyNotifications(supabase: Client): Promise<NotificationWithActor[]> {
   const { data } = await supabase
     .from("notifications")
     .select(
-      "id, user_id, actor_id, log_id, comment_id, type, created_at, read_at, actor:profiles!notifications_actor_id_fkey(id, nickname, avatar_url), comment:workout_log_comments(body)"
+      "id, user_id, actor_id, log_id, comment_id, reaction_id, type, created_at, read_at, actor:profiles!notifications_actor_id_fkey(id, nickname, avatar_url), comment:workout_log_comments(body), reaction:workout_log_reactions(emoji)"
     )
     .order("created_at", { ascending: false })
     .limit(30);

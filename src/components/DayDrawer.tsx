@@ -300,7 +300,7 @@ function PhotoCarousel({ photoUrls, nickname }: { photoUrls: string[]; nickname:
               alt={`${nickname}의 운동 인증 ${i + 1}`}
               fill
               sizes="(max-width: 448px) 100vw, 448px"
-              className="object-contain"
+              className="object-cover"
               priority={i === 0}
             />
           </div>

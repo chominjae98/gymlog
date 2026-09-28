@@ -39,21 +39,6 @@ export async function getMonthLogs(supabase: Client, monthDate: Date, roomId: st
   return (data ?? []) as unknown as WorkoutLogWithProfile[];
 }
 
-/**
- * DB 컬럼명은 fine_per_day지만, 실제로는 "하루당" 금액이 아니라
- * 그 주 목표를 못 채우면 날짜 수와 무관하게 한 번만 부과되는 고정(주간) 벌금액이다.
- * 컬럼명을 그대로 노출하면 헷갈리므로 앱 코드에서는 weeklyFine으로 부른다.
- * 벌금 단가는 방마다 다르게 설정할 수 있어 rooms.fine_per_day에서 읽는다.
- */
-export async function getFinePerDay(supabase: Client, roomId: string) {
-  const { data } = await supabase
-    .from("rooms")
-    .select("fine_per_day")
-    .eq("id", roomId)
-    .single();
-  return data?.fine_per_day ?? 5000;
-}
-
 /** 목표 미달(fined) 상태일 때만 weeklyFine 전액이 부과되고, 그 외엔 0원. */
 export function computeFineAmount(
   status: WeeklyProgress["status"],

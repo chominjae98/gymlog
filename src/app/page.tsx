@@ -4,7 +4,6 @@ import { LoginScreen } from "@/components/LoginScreen";
 import { AppShell } from "@/components/AppShell";
 import { SetupNotice } from "@/components/SetupNotice";
 import {
-  getFinePerDay,
   getMonthLogs,
   getMyWeeklyGoal,
   getProfile,
@@ -21,6 +20,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * 방 하나의 대시보드(정산/오늘 인증/이번 주 현황 등)를 채우는 데 필요한 데이터 묶음.
  * goalRoomId: 주간 목표는 방마다 따로가 아니라 "홈" 기준으로 통일해서 보여주므로,
  * 그 목표를 조회할 방(=홈)의 id를 별도로 받는다. getWeeklyProgress 주석 참고.
+ * finePerDay: getMyRooms가 이미 rooms 전체 row(요금 포함)를 받아와서 갖고 있으므로,
+ * 방 전환마다 fine_per_day만 다시 조회하는 왕복 하나를 없애고 그 값을 그대로 받는다.
  */
 async function getRoomDashboardBundle(
   supabase: SupabaseClient<Database>,
@@ -28,13 +29,13 @@ async function getRoomDashboardBundle(
   roomId: string,
   today: Date,
   weekStart: string,
-  goalRoomId: string
+  goalRoomId: string,
+  finePerDay: number
 ) {
-  const [monthLogs, weeklyProgress, myGoal, finePerDay, exceptions, roomMemberCount] = await Promise.all([
+  const [monthLogs, weeklyProgress, myGoal, exceptions, roomMemberCount] = await Promise.all([
     getMonthLogs(supabase, today, roomId),
     getWeeklyProgress(supabase, today, roomId, goalRoomId),
     getMyWeeklyGoal(supabase, userId, today, goalRoomId),
-    getFinePerDay(supabase, roomId),
     getFineExceptionsForWeek(supabase, weekStart, roomId),
     getRoomMemberCount(supabase, roomId),
   ]);
@@ -127,7 +128,15 @@ export default async function Home({
     getProfile(supabase, user.id),
     defaultRoom ? getHomeBundle(supabase, user.id, defaultRoom.id, today) : null,
     selectedRoom && goalRoomId
-      ? getRoomDashboardBundle(supabase, user.id, selectedRoom.id, today, weekStart, goalRoomId)
+      ? getRoomDashboardBundle(
+          supabase,
+          user.id,
+          selectedRoom.id,
+          today,
+          weekStart,
+          goalRoomId,
+          selectedRoom.fine_per_day
+        )
       : null,
   ]);
 
