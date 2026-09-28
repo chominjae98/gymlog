@@ -5,13 +5,19 @@ type Client = SupabaseClient<Database>;
 
 /** 내가 속한 방 목록 (가입일 오름차순 — 가장 먼저 들어간 방이 기본으로 앞에 오도록). */
 export async function getMyRooms(supabase: Client, userId: string): Promise<Room[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("room_members")
     .select("joined_at, room:rooms(*)")
     .eq("user_id", userId)
     .order("joined_at", { ascending: true });
 
-  return ((data ?? []) as unknown as { room: Room }[]).map((r) => r.room);
+  if (error) {
+    console.error("getMyRooms 조회 실패:", userId, error);
+  }
+
+  return ((data ?? []) as unknown as { room: Room | null }[])
+    .map((r) => r.room)
+    .filter((room): room is Room => room !== null);
 }
 
 /** 새 방을 만들고 내가 자동으로 첫 멤버가 된다. */
