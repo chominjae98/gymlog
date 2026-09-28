@@ -645,13 +645,15 @@ alter table public.workout_logs alter column room_id set not null;
 alter table public.fine_exceptions alter column room_id set not null;
 
 -- ------------------------------------------------------------
--- 11. (제거된 기능 정리) 웹 푸시 알림 리마인더와 이모지 리액션 기능을 뺐다.
---     예전 버전을 실행해서 아래 테이블이 이미 생성돼 있다면 이 문장들이 정리해준다.
+-- 11. (제거된 기능 정리) 예전에 뺐던 웹 푸시 알림 리마인더용 테이블을 정리한다.
+--     예전 버전을 실행해서 아래 테이블이 이미 생성돼 있다면 이 문장이 정리해준다.
 --     (workout_logs, weekly_goals, workout_log_comments 등 남겨둔 테이블의
 --     기존 데이터는 전혀 건드리지 않는다.)
+--     주의: 이모지 리액션(workout_log_reactions)은 섹션 15에서 다시 도입했으므로
+--     여기서 드롭하지 않는다 — 이 스크립트를 몇 번을 다시 실행해도 리액션 데이터가
+--     지워지면 안 된다.
 -- ------------------------------------------------------------
 drop table if exists public.push_subscriptions;
-drop table if exists public.workout_log_reactions;
 
 -- ------------------------------------------------------------
 -- 12. 기본 방 자동 가입 : 신규 가입자(카카오 등)도 별도 방을 만들거나 초대 코드를
@@ -744,3 +746,172 @@ as $$
 $$;
 
 grant execute on function public.get_global_leaderboard(integer) to authenticated;
+
+-- ------------------------------------------------------------
+-- 14. 정산 수금 계좌 : 방장이 벌금을 걷을 본인 계좌를 등록해두면, 정산 요약에서
+--     사람별로 "토스로 송금하기" 버튼(계좌·금액이 미리 채워진 토스 앱 화면으로
+--     바로 이동)을 보여줄 수 있다. 서비스가 돈을 직접 받거나 보관하지 않고,
+--     계좌번호를 보여주기만 한다는 점이 핵심(전자금융업 등록 대상이 아님).
+--     본인 계좌만 본인(방장)이 등록/수정할 수 있어야 하므로, rooms에 대한
+--     update 정책을 여기서 처음 추가한다(created_by 본인만).
+-- ------------------------------------------------------------
+alter table public.rooms add column if not exists settlement_bank text;
+alter table public.rooms add column if not exists settlement_account_no text;
+alter table public.rooms add column if not exists settlement_account_holder text;
+
+drop policy if exists "room creator can update own room" on public.rooms;
+create policy "room creator can update own room"
+  on public.rooms for update
+  to authenticated
+  using (created_by = auth.uid())
+  with check (created_by = auth.uid());
+
+-- ------------------------------------------------------------
+-- 15. workout_log_reactions : 인증 게시물 이모지 리액션 (1인당 게시물 하나에 1개).
+--     같은 이모지를 다시 누르면 취소, 다른 이모지를 누르면 전환 — 클라이언트가
+--     upsert(onConflict: log_id,user_id) 한 번으로 처리한다.
+-- ------------------------------------------------------------
+create table if not exists public.workout_log_reactions (
+  id uuid primary key default gen_random_uuid(),
+  log_id uuid not null references public.workout_logs (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  emoji text not null check (emoji in ('🔥','💪','👏','❤️','😮')),
+  created_at timestamptz not null default now(),
+  unique (log_id, user_id)
+);
+
+create index if not exists workout_log_reactions_log_idx on public.workout_log_reactions (log_id);
+
+alter table public.workout_log_reactions enable row level security;
+
+drop policy if exists "reactions are viewable by room members" on public.workout_log_reactions;
+create policy "reactions are viewable by room members"
+  on public.workout_log_reactions for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.workout_logs wl
+      where wl.id = workout_log_reactions.log_id and public.is_room_member(wl.room_id)
+    )
+  );
+
+drop policy if exists "user can add own reaction" on public.workout_log_reactions;
+create policy "user can add own reaction"
+  on public.workout_log_reactions for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.workout_logs wl
+      where wl.id = log_id and public.is_room_member(wl.room_id)
+    )
+  );
+
+drop policy if exists "user can update own reaction" on public.workout_log_reactions;
+create policy "user can update own reaction"
+  on public.workout_log_reactions for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "user can delete own reaction" on public.workout_log_reactions;
+create policy "user can delete own reaction"
+  on public.workout_log_reactions for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- ------------------------------------------------------------
+-- 16. notifications : 댓글 알림함(앱 내 알림만, 실제 푸시 아님). 댓글이 달리면
+--     트리거가 게시물 주인에게 알림 행을 만든다(자기 게시물에 자기가 댓글 단
+--     경우는 제외). security definer 트리거만 insert하므로 authenticated용
+--     insert 정책은 두지 않는다 — 클라이언트가 남의 알림을 조작하지 못하게.
+-- ------------------------------------------------------------
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  actor_id uuid not null references public.profiles (id) on delete cascade,
+  log_id uuid not null references public.workout_logs (id) on delete cascade,
+  comment_id uuid references public.workout_log_comments (id) on delete cascade,
+  type text not null default 'comment' check (type in ('comment')),
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+
+create index if not exists notifications_user_created_idx on public.notifications (user_id, created_at desc);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "user can view own notifications" on public.notifications;
+create policy "user can view own notifications"
+  on public.notifications for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "user can mark own notifications read" on public.notifications;
+create policy "user can mark own notifications read"
+  on public.notifications for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create or replace function public.notify_on_comment()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  post_owner_id uuid;
+begin
+  select user_id into post_owner_id from public.workout_logs where id = new.log_id;
+
+  if post_owner_id is not null and post_owner_id <> new.user_id then
+    insert into public.notifications (user_id, actor_id, log_id, comment_id, type)
+    values (post_owner_id, new.user_id, new.log_id, new.id, 'comment');
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_comment_notify on public.workout_log_comments;
+create trigger on_comment_notify
+  after insert on public.workout_log_comments
+  for each row execute procedure public.notify_on_comment();
+
+-- ------------------------------------------------------------
+-- 17. 랭킹 기간별 조회 : 기존 get_global_leaderboard(누적)는 그대로 두고,
+--     주간/월간/전체를 한 함수로 조회할 수 있게 추가한다. date_trunc('week', ...)는
+--     Postgres 기본이 월요일 시작이라 앱의 주 시작 기준(WEEK_OPTS)과 일치한다.
+-- ------------------------------------------------------------
+create or replace function public.get_leaderboard(period text default 'all', limit_count integer default 100)
+returns table (
+  user_id uuid,
+  nickname text,
+  avatar_url text,
+  total_days bigint
+)
+language sql
+security definer set search_path = public
+stable
+as $$
+  select
+    p.id as user_id,
+    p.nickname,
+    p.avatar_url,
+    count(distinct wl.log_date) as total_days
+  from public.profiles p
+  join public.workout_logs wl on wl.user_id = p.id
+  join public.rooms r on r.id = wl.room_id and r.is_default
+  where
+    case period
+      when 'week' then wl.log_date >= date_trunc('week', (now() at time zone 'Asia/Seoul')::date)::date
+      when 'month' then wl.log_date >= date_trunc('month', (now() at time zone 'Asia/Seoul')::date)::date
+      else true
+    end
+  group by p.id, p.nickname, p.avatar_url
+  having count(distinct wl.log_date) > 0
+  order by total_days desc, p.created_at asc
+  limit limit_count;
+$$;
+
+grant execute on function public.get_leaderboard(text, integer) to authenticated;

@@ -68,6 +68,10 @@ export type Room = {
   created_at: string;
   /** 모든 신규 가입자가 자동으로 속하는 공용 방(로그인한 전체 이용자가 함께 보는 "홈"). */
   is_default: boolean;
+  /** 정산을 받을 방장 본인 계좌(선택). 셋 다 있어야 "토스로 송금하기" 버튼이 뜬다. */
+  settlement_bank: string | null;
+  settlement_account_no: string | null;
+  settlement_account_holder: string | null;
 };
 
 export type RoomMember = {
@@ -162,6 +166,26 @@ export type Database = {
         Update: Partial<FineExceptionVote>;
         Relationships: [];
       };
+      workout_log_reactions: {
+        Row: WorkoutLogReaction;
+        Insert: Partial<WorkoutLogReaction> & {
+          log_id: string;
+          user_id: string;
+          emoji: string;
+        };
+        Update: Partial<WorkoutLogReaction>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: AppNotification;
+        Insert: Partial<AppNotification> & {
+          user_id: string;
+          actor_id: string;
+          log_id: string;
+        };
+        Update: Partial<AppNotification>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -179,6 +203,10 @@ export type Database = {
       };
       get_global_leaderboard: {
         Args: { limit_count?: number };
+        Returns: LeaderboardEntry[];
+      };
+      get_leaderboard: {
+        Args: { period?: string; limit_count?: number };
         Returns: LeaderboardEntry[];
       };
     };
@@ -204,6 +232,37 @@ export type WeeklyProgress = {
 /** 화면에서 쓰는, 작성자 정보가 join 된 댓글 */
 export type CommentWithProfile = WorkoutLogComment & {
   profile: Pick<Profile, "id" | "nickname" | "avatar_url">;
+};
+
+export type WorkoutLogReaction = {
+  id: string;
+  log_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+};
+
+/** 게시물 하나의 리액션 집계: 이모지별 개수 + 내가 고른 이모지(없으면 null). */
+export type ReactionSummary = {
+  counts: Record<string, number>;
+  myEmoji: string | null;
+};
+
+export type AppNotification = {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  log_id: string;
+  comment_id: string | null;
+  type: "comment";
+  created_at: string;
+  read_at: string | null;
+};
+
+/** 화면에서 쓰는, 알림을 유발한 사람의 프로필과 댓글 내용이 join 된 알림 */
+export type NotificationWithActor = AppNotification & {
+  actor: Pick<Profile, "id" | "nickname" | "avatar_url">;
+  comment: { body: string } | null;
 };
 
 /** 특정 달(월) 안에서, 한 사람의 주차별 정산 내역 */

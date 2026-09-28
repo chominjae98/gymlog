@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { LogOut, Share2, Users, X } from "lucide-react";
+import { Landmark, LogOut, Share2, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoomMembers, leaveRoom, type RoomMemberProfile } from "@/lib/rooms-data";
 import { getRoomAccentClasses } from "@/lib/room-colors";
@@ -14,20 +14,31 @@ import type { Room } from "@/types/database";
 
 type Props = {
   room: Room;
+  userId: string;
   onClose: () => void;
   onLeft: () => void;
 };
 
-/** 방 하나를 관리하는 화면: 초대 코드 공유, 멤버 목록, 방 나가기. */
-export function RoomManageSheet({ room, onClose, onLeft }: Props) {
+/** 방 하나를 관리하는 화면: 초대 코드 공유, 정산 계좌(방장만), 멤버 목록, 방 나가기. */
+export function RoomManageSheet({ room, userId, onClose, onLeft }: Props) {
   useLockBodyScroll();
   useCloseOnBackButton(onClose);
   const showToast = useToast();
   const accent = getRoomAccentClasses(room.id);
+  const isOwner = room.created_by === userId;
 
   const [members, setMembers] = useState<RoomMemberProfile[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [leaving, setLeaving] = useState(false);
+
+  const [editingAccount, setEditingAccount] = useState(false);
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [settlementBank, setSettlementBank] = useState(room.settlement_bank ?? "");
+  const [settlementAccountNo, setSettlementAccountNo] = useState(room.settlement_account_no ?? "");
+  const [settlementAccountHolder, setSettlementAccountHolder] = useState(
+    room.settlement_account_holder ?? ""
+  );
+  const hasSettlementAccount = Boolean(settlementBank && settlementAccountNo);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +58,25 @@ export function RoomManageSheet({ room, onClose, onLeft }: Props) {
   async function handleShare() {
     const result = await shareRoomInvite(room);
     showToast(result === "shared" ? "초대를 공유했어요" : "초대 문구를 클립보드에 복사했어요");
+  }
+
+  async function handleSaveSettlementAccount() {
+    setSavingAccount(true);
+    const { error } = await createClient()
+      .from("rooms")
+      .update({
+        settlement_bank: settlementBank.trim() || null,
+        settlement_account_no: settlementAccountNo.trim() || null,
+        settlement_account_holder: settlementAccountHolder.trim() || null,
+      })
+      .eq("id", room.id);
+    setSavingAccount(false);
+    if (error) {
+      showToast("계좌 저장에 실패했어요. 다시 시도해 주세요.", "error");
+      return;
+    }
+    setEditingAccount(false);
+    showToast("정산 계좌를 저장했어요");
   }
 
   async function handleLeave() {
@@ -107,6 +137,81 @@ export function RoomManageSheet({ room, onClose, onLeft }: Props) {
               <Share2 size={16} />
             </span>
           </button>
+
+          {isOwner && (
+            <div className="surface-card mt-3 flex flex-col gap-2 px-4 py-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+                  <Landmark size={14} className="text-muted" />
+                  정산 계좌
+                </p>
+                {!editingAccount && (
+                  <button
+                    onClick={() => setEditingAccount(true)}
+                    className="shrink-0 text-[12px] font-semibold text-brand-strong"
+                  >
+                    {hasSettlementAccount ? "수정" : "등록하기"}
+                  </button>
+                )}
+              </div>
+
+              {editingAccount ? (
+                <div className="flex flex-col gap-2">
+                  <input
+                    value={settlementBank}
+                    onChange={(e) => setSettlementBank(e.target.value)}
+                    placeholder="은행명 (예: 카카오뱅크)"
+                    className="rounded-xl bg-surface-muted px-3 py-2 text-[13px] text-foreground outline-none"
+                  />
+                  <input
+                    value={settlementAccountNo}
+                    onChange={(e) => setSettlementAccountNo(e.target.value)}
+                    placeholder="계좌번호"
+                    inputMode="numeric"
+                    className="rounded-xl bg-surface-muted px-3 py-2 text-[13px] text-foreground outline-none"
+                  />
+                  <input
+                    value={settlementAccountHolder}
+                    onChange={(e) => setSettlementAccountHolder(e.target.value)}
+                    placeholder="예금주명 (선택)"
+                    className="rounded-xl bg-surface-muted px-3 py-2 text-[13px] text-foreground outline-none"
+                  />
+                  <p className="text-[11px] text-muted">
+                    등록한 계좌는 같은 방 멤버에게만 보이고, 정산 요약에서 본인 몫을 토스로 바로
+                    송금할 때 쓰여요.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSettlementBank(room.settlement_bank ?? "");
+                        setSettlementAccountNo(room.settlement_account_no ?? "");
+                        setSettlementAccountHolder(room.settlement_account_holder ?? "");
+                        setEditingAccount(false);
+                      }}
+                      className="flex-1 rounded-xl py-2 text-[12.5px] font-semibold text-muted transition active:scale-[0.98]"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleSaveSettlementAccount}
+                      disabled={savingAccount || !settlementBank.trim() || !settlementAccountNo.trim()}
+                      className="flex-1 rounded-xl bg-brand py-2 text-[12.5px] font-semibold text-white transition active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {savingAccount ? "저장 중..." : "저장"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[13px] text-muted">
+                  {hasSettlementAccount
+                    ? `${settlementBank} ${settlementAccountNo}${
+                        settlementAccountHolder ? ` (${settlementAccountHolder})` : ""
+                      }`
+                    : "등록하면 정산 요약에서 원클릭 송금 버튼이 생겨요"}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="mt-5 flex items-center gap-1.5 px-1">
             <Users size={14} className="text-muted" />

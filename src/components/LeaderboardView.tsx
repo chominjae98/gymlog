@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getGlobalLeaderboard } from "@/lib/rooms-data";
+import { getLeaderboard, type LeaderboardPeriod } from "@/lib/rooms-data";
 import type { LeaderboardEntry } from "@/types/database";
 
 type Props = {
@@ -17,20 +17,29 @@ const PODIUM_RANK_STYLE = [
   { ring: "ring-[#c98a56]", badge: "bg-[#c98a56]", size: "h-14 w-14", order: "order-3" },
 ] as const;
 
+const PERIOD_TABS: { key: LeaderboardPeriod; label: string }[] = [
+  { key: "week", label: "주간" },
+  { key: "month", label: "월간" },
+  { key: "all", label: "전체" },
+];
+
 /**
  * 전체 이용자 랭킹. "홈"(모두가 함께 쓰는 공용 방)에서의 누적 인증 일수 기준으로,
  * 전체 이용자 중 내 순위를 보여준다(사진·벌금 등 민감 정보는 없음).
  */
 export function LeaderboardView({ currentUserId }: Props) {
+  const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const myRowRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getGlobalLeaderboard(createClient())
+    getLeaderboard(createClient(), period)
       .then((data) => {
-        if (!cancelled) setEntries(data);
+        if (cancelled) return;
+        setEntries(data);
+        setLoadError(false);
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -38,7 +47,7 @@ export function LeaderboardView({ currentUserId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [period]);
 
   const top3 = entries?.slice(0, 3) ?? [];
   const rest = entries?.slice(3) ?? [];
@@ -53,6 +62,23 @@ export function LeaderboardView({ currentUserId }: Props) {
       </header>
 
       <main className="relative mx-auto max-w-md px-4 pt-3">
+        <div className="mb-4 flex gap-1 rounded-full bg-surface-muted p-1">
+          {PERIOD_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setPeriod(tab.key)}
+              className={[
+                "flex-1 rounded-full py-2 text-[12.5px] font-semibold transition",
+                period === tab.key
+                  ? "bg-surface text-foreground shadow-[var(--shadow-soft)]"
+                  : "text-muted",
+              ].join(" ")}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {loadError ? (
           <div className="flex h-40 flex-col items-center justify-center gap-1 text-center text-[13px] text-muted">
             <p>랭킹을 불러오지 못했어요.</p>
@@ -67,7 +93,13 @@ export function LeaderboardView({ currentUserId }: Props) {
         ) : entries.length === 0 ? (
           <div className="flex h-40 flex-col items-center justify-center gap-1.5 text-center">
             <span className="text-[28px]">🏆</span>
-            <p className="text-[13px] text-muted">아직 랭킹에 오른 사람이 없어요</p>
+            <p className="text-[13px] text-muted">
+              {period === "week"
+                ? "아직 이번 주 랭킹에 오른 사람이 없어요"
+                : period === "month"
+                  ? "아직 이번 달 랭킹에 오른 사람이 없어요"
+                  : "아직 랭킹에 오른 사람이 없어요"}
+            </p>
           </div>
         ) : (
           <>

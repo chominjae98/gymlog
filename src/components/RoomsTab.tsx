@@ -192,6 +192,7 @@ export function RoomsTab({
       {manageRoom && (
         <RoomManageSheet
           room={manageRoom}
+          userId={userId}
           onClose={() => setManageRoom(null)}
           onLeft={() => {
             setManageRoom(null);

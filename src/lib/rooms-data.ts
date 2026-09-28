@@ -71,8 +71,13 @@ export async function leaveRoom(supabase: Client, roomId: string) {
 
 const LEADERBOARD_LIMIT = 100;
 
-/** 방과 무관한 전체 이용자 랭킹(누적 인증 일수 기준). 상위 100명까지만 보여준다. */
-export async function getGlobalLeaderboard(supabase: Client): Promise<LeaderboardEntry[]> {
-  const { data } = await supabase.rpc("get_global_leaderboard", { limit_count: LEADERBOARD_LIMIT });
+export type LeaderboardPeriod = "week" | "month" | "all";
+
+/** 방과 무관한 전체 이용자 랭킹(기간별 인증 일수 기준). 상위 100명까지만 보여준다. */
+export async function getLeaderboard(
+  supabase: Client,
+  period: LeaderboardPeriod
+): Promise<LeaderboardEntry[]> {
+  const { data } = await supabase.rpc("get_leaderboard", { period, limit_count: LEADERBOARD_LIMIT });
   return (data ?? []) as LeaderboardEntry[];
 }

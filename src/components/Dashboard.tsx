@@ -189,6 +189,7 @@ export function Dashboard({
 
       <Header
         profile={profile}
+        userId={userId}
         myGoal={goalRoomId ? myGoal : undefined}
         onGoalClick={goalRoomId ? () => setShowGoal(true) : undefined}
         onHeatmapClick={() => setShowHeatmap(true)}
@@ -393,7 +394,8 @@ export function Dashboard({
         <SettlementSheet
           monthDate={monthDate}
           weeklyFine={weeklyFine}
-          roomId={roomId}
+          room={room}
+          userId={userId}
           onClose={() => setShowSettlement(false)}
         />
       )}

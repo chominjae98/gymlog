@@ -3,15 +3,18 @@
 import Image from "next/image";
 import { Flame, Target } from "lucide-react";
 import { HeaderMenu } from "@/components/HeaderMenu";
+import { NotificationBell } from "@/components/NotificationBell";
 import type { Profile } from "@/types/database";
 
 export function Header({
   profile,
+  userId,
   myGoal,
   onGoalClick,
   onHeatmapClick,
 }: {
   profile: Profile;
+  userId: string;
   myGoal?: number | null;
   onGoalClick?: () => void;
   onHeatmapClick: () => void;
@@ -41,6 +44,7 @@ export function Header({
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
+          <NotificationBell userId={userId} />
           <button
             onClick={onHeatmapClick}
             aria-label="내 활동 히트맵"

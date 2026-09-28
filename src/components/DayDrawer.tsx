@@ -13,6 +13,7 @@ import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import { EditPostSheet } from "@/components/EditPostSheet";
 import { PostSocialPanel } from "@/components/PostSocialPanel";
+import { ReactionBar } from "@/components/ReactionBar";
 import type { WorkoutLogWithProfile } from "@/types/database";
 
 type Props = {
@@ -153,6 +154,8 @@ export function DayDrawer({
                   </div>
 
                   <PhotoCarousel photoUrls={log.photo_urls} nickname={log.profile.nickname} />
+
+                  <ReactionBar logId={log.id} currentUserId={currentUserId} />
 
                   {log.memo && (
                     <p className="mx-4 mt-3.5 rounded-2xl bg-surface-muted px-3.5 py-3 text-[13px] leading-relaxed text-foreground">
