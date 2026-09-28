@@ -115,21 +115,18 @@ export function RoomManageSheet({ room, onClose, onLeft }: Props) {
             </p>
           </div>
 
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {loadError ? (
-              <li className="rounded-2xl bg-surface-muted px-4 py-6 text-center text-[13px] text-muted">
-                멤버 목록을 불러오지 못했어요.
-              </li>
-            ) : members === null ? (
-              <li className="rounded-2xl bg-surface-muted px-4 py-6 text-center text-[13px] text-muted">
-                불러오는 중...
-              </li>
-            ) : (
-              members.map((m) => (
-                <li
-                  key={m.id}
-                  className="flex items-center gap-2.5 rounded-2xl bg-surface-muted px-3.5 py-2.5"
-                >
+          {loadError ? (
+            <p className="mt-2 rounded-2xl px-4 py-6 text-center text-[13px] text-muted">
+              멤버 목록을 불러오지 못했어요.
+            </p>
+          ) : members === null ? (
+            <p className="mt-2 rounded-2xl px-4 py-6 text-center text-[13px] text-muted">
+              불러오는 중...
+            </p>
+          ) : (
+            <ul className="surface-card mt-2 flex flex-col divide-y divide-border px-3.5">
+              {members.map((m) => (
+                <li key={m.id} className="flex items-center gap-2.5 py-2.5">
                   <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-brand-soft">
                     {m.avatar_url && (
                       <Image src={m.avatar_url} alt="" fill sizes="32px" className="object-cover" />
@@ -139,9 +136,9 @@ export function RoomManageSheet({ room, onClose, onLeft }: Props) {
                     {m.nickname}
                   </span>
                 </li>
-              ))
-            )}
-          </ul>
+              ))}
+            </ul>
+          )}
 
           <button
             onClick={handleLeave}

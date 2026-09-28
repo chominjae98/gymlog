@@ -155,7 +155,7 @@ export function DayDrawer({
                   <PhotoCarousel photoUrls={log.photo_urls} nickname={log.profile.nickname} />
 
                   {log.memo && (
-                    <p className="px-4 py-3.5 text-[13px] leading-relaxed text-foreground">
+                    <p className="mx-4 mt-3.5 rounded-2xl bg-surface-muted px-3.5 py-3 text-[13px] leading-relaxed text-foreground">
                       {log.memo}
                     </p>
                   )}

@@ -463,18 +463,18 @@ function WeeklyReport({
     .slice(0, 3);
 
   return (
-    <div className="surface-card flex flex-col gap-5 px-4 py-4">
+    <div className="surface-card px-4 py-3.5">
       <p className="text-[13px] font-semibold text-foreground">주간 리포트</p>
 
       {mostWorkouts.length === 0 && goalAchievers.length === 0 ? (
-        <p className="text-[12.5px] text-muted">
+        <p className="mt-0.5 text-[12px] text-muted">
           아직 이번 주 기록이 없어요. 가장 먼저 운동을 인증해 보세요!
         </p>
       ) : (
-        <>
+        <div className="mt-3 flex flex-col gap-4">
           {mostWorkouts.length > 0 && (
             <div>
-              <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+              <div className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
                 <Flame size={13} className="text-warn" />
                 가장 많이 운동한 사람
               </div>
@@ -495,7 +495,7 @@ function WeeklyReport({
 
           {goalAchievers.length > 0 && (
             <div>
-              <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+              <div className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
                 <Target size={13} className="text-brand-strong" />
                 목표 달성률 TOP
               </div>
@@ -513,7 +513,7 @@ function WeeklyReport({
               </ul>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -540,7 +540,7 @@ function ReportRow({
       </div>
       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
         {nickname}
-        {isMe && <span className="ml-1 text-[11px] font-medium text-brand-strong">나</span>}
+        {isMe && <span className="ml-1.5 text-[11px] font-medium text-brand-strong">나</span>}
       </span>
       <span className="shrink-0 text-[12.5px] font-bold text-foreground">{stat}</span>
     </li>

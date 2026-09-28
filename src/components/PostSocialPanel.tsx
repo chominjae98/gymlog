@@ -99,20 +99,20 @@ export function PostSocialPanel({
   const hiddenCount = comments.length - visibleComments.length;
 
   return (
-    <div className="border-t border-border px-4 py-3">
+    <div className="px-4 pb-3.5 pt-3">
       {comments.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {hiddenCount > 0 && (
             <button
               onClick={() => setShowAllComments(true)}
-              className="self-start text-[12px] font-medium text-muted"
+              className="self-start py-1 text-[12px] font-medium text-muted"
             >
               댓글 {comments.length}개 모두 보기
             </button>
           )}
           {visibleComments.map((c) =>
             editingId === c.id ? (
-              <div key={c.id} className="flex items-center gap-2 text-[12.5px] leading-relaxed">
+              <div key={c.id} className="flex items-center gap-2 py-0.5">
                 <input
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
@@ -141,22 +141,24 @@ export function PostSocialPanel({
                 </button>
               </div>
             ) : (
-              <div key={c.id} className="flex items-start gap-2 text-[12.5px] leading-relaxed">
-                <span className="shrink-0 font-semibold text-foreground">{c.profile.nickname}</span>
-                <span className="min-w-0 flex-1 break-words text-foreground/90">{c.body}</span>
+              <div key={c.id} className="flex items-start gap-2">
+                <div className="min-w-0 flex-1 rounded-2xl bg-surface-muted px-3.5 py-2 text-[12.5px] leading-relaxed">
+                  <span className="font-semibold text-foreground">{c.profile.nickname}</span>{" "}
+                  <span className="break-words text-foreground/85">{c.body}</span>
+                </div>
                 {c.user_id === currentUserId && (
-                  <div className="flex shrink-0 items-center gap-1.5">
+                  <div className="flex shrink-0 items-center gap-1 pt-2">
                     <button
                       onClick={() => startEditComment(c)}
                       aria-label="댓글 수정"
-                      className="text-muted"
+                      className="text-muted transition active:scale-90"
                     >
                       <Pencil size={12} />
                     </button>
                     <button
                       onClick={() => handleDeleteComment(c.id)}
                       aria-label="댓글 삭제"
-                      className="text-muted"
+                      className="text-muted transition active:scale-90"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -168,7 +170,7 @@ export function PostSocialPanel({
         </div>
       )}
 
-      <div className={["flex items-center gap-2", comments.length > 0 && "mt-3"].filter(Boolean).join(" ")}>
+      <div className={["flex items-center gap-2", comments.length > 0 && "mt-2.5"].filter(Boolean).join(" ")}>
         <input
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
@@ -178,13 +180,13 @@ export function PostSocialPanel({
           maxLength={300}
           placeholder={isOptimistic ? "업로드 완료 후 댓글을 남길 수 있어요" : "댓글 달기..."}
           disabled={isOptimistic}
-          className="min-w-0 flex-1 rounded-full bg-surface-muted px-3.5 py-2 text-[12.5px] text-foreground outline-none disabled:opacity-60"
+          className="min-w-0 flex-1 rounded-full bg-surface-muted px-3.5 py-2.5 text-[12.5px] text-foreground outline-none disabled:opacity-60"
         />
         <button
           onClick={handleAddComment}
           disabled={posting || isOptimistic || !commentText.trim()}
           aria-label="댓글 등록"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-white transition active:scale-90 disabled:opacity-40"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-white transition active:scale-90 disabled:opacity-40"
         >
           <Send size={14} />
         </button>
