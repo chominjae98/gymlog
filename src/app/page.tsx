@@ -40,11 +40,11 @@ export default async function Home({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    // 세션 쿠키가 있는데도 로그인 화면으로 튕기는 문제를 진단하려면 "쿠키가 아예
-    // 없었는지"와 "쿠키는 있었는데 검증/갱신에 실패했는지"를 구분할 수 있어야 한다.
-    // (getMyRooms와 동일하게, 에러를 조용히 삼키지 않고 로그로 남긴다.)
-    if (userError) {
-      console.error("getUser 실패로 로그인 화면 표시:", userError.message, userError.status);
+    // "AuthSessionMissingError"는 쿠키가 아예 없는(=로그인 전) 정상적인 상태라 로그를
+    // 남기지 않는다. 그 외의 에러, 즉 쿠키는 있었는데 검증/갱신 자체가 실패한 경우만
+    // 남겨야 "왜 세션이 끊겼는지"를 진단할 수 있다(getMyRooms와 동일하게 조용히 삼키지 않음).
+    if (userError && userError.name !== "AuthSessionMissingError") {
+      console.error("getUser 실패로 로그인 화면 표시:", userError.name, userError.message, userError.status);
     }
     return <LoginScreen authError={params?.auth_error === "1"} />;
   }

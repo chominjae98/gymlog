@@ -32,9 +32,16 @@ export async function updateSession(request: NextRequest) {
 
   // 세션 refresh 트리거 (반드시 호출해야 함)
   const { error } = await supabase.auth.getUser();
-  if (error) {
-    // 쿠키는 있었는데 검증/갱신에 실패해 로그아웃 상태가 된 경우를 추적하기 위한 로그.
-    console.error("proxy: 세션 refresh 실패:", request.nextUrl.pathname, error.message, error.status);
+  // "AuthSessionMissingError"는 쿠키가 아예 없는(=로그인 전) 정상적인 상태이므로 로그를
+  // 남기지 않는다. 쿠키는 있었는데 검증/갱신 자체가 실패한 경우만 추적한다.
+  if (error && error.name !== "AuthSessionMissingError") {
+    console.error(
+      "proxy: 세션 refresh 실패:",
+      request.nextUrl.pathname,
+      error.name,
+      error.message,
+      error.status
+    );
   }
 
   return supabaseResponse;
