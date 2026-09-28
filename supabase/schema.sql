@@ -160,10 +160,18 @@ as $$
 $$;
 
 -- 방 생성 + 생성자를 멤버로 등록까지 한 번에 처리한다. 코드 충돌 시 자동 재시도한다.
+--
+-- security definer로 RLS를 우회해야 한다: rooms insert 직후 "returning *"으로 새 행을
+-- 되읽는 순간에도 Postgres RLS는 rooms의 select 정책("rooms are viewable by their
+-- members" → is_room_member(id))을 적용하는데, 이 시점엔 아직 room_members insert 전이라
+-- 방금 만든 사람조차 그 방의 멤버가 아니어서 정책을 통과하지 못하고 "new row violates
+-- row-level security policy for table rooms"(42501)로 실패했다. join_room_by_code와
+-- 동일하게 security definer로 바꾸고, auth.uid() 검증과 "본인만 생성자/멤버로 기록"하는
+-- 로직은 함수 내부에 그대로 두어 안전성을 유지한다.
 create or replace function public.create_room(name text, fine_per_day integer default 5000)
 returns public.rooms
 language plpgsql
-security invoker
+security definer set search_path = public
 as $$
 declare
   new_room public.rooms;
@@ -219,6 +227,25 @@ begin
 end;
 $$;
 
+-- 방을 나간다(본인 멤버십만 삭제). room_members는 delete 정책이 없어 RLS가 기본적으로
+-- 모든 삭제를 막으므로, join_room_by_code와 동일하게 security definer로 우회하되
+-- "본인 것만" 지우도록 auth.uid()로 제한한다. 마지막 남은 멤버가 나가는 것도 그냥
+-- 허용한다 — 방은 그대로 남고(다른 사람이 초대 코드로 다시 참가 가능), 삭제되지 않는다.
+create or replace function public.leave_room(target_room_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception '로그인이 필요해요.';
+  end if;
+
+  delete from public.room_members
+  where room_id = target_room_id and user_id = auth.uid();
+end;
+$$;
+
 -- 방과 무관한 전체 이용자 랭킹(누적 인증 일수). 닉네임/아바타/집계 수치만 노출하고
 -- 사진·메모·어느 방 소속인지는 절대 노출하지 않는다.
 create or replace function public.get_global_leaderboard(limit_count integer default 100)
@@ -247,6 +274,7 @@ $$;
 grant execute on function public.is_room_member(uuid) to authenticated;
 grant execute on function public.create_room(text, integer) to authenticated;
 grant execute on function public.join_room_by_code(text) to authenticated;
+grant execute on function public.leave_room(uuid) to authenticated;
 grant execute on function public.get_global_leaderboard(integer) to authenticated;
 
 -- ------------------------------------------------------------

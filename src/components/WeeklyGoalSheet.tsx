@@ -55,15 +55,13 @@ export function WeeklyGoalSheet({ userId, roomId, currentGoal, onClose, onSaved 
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
         onClick={onClose}
         className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
       />
-      <div className="animate-sheet-up safe-bottom relative z-10 max-h-[88dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] bg-background px-5 pt-4 pb-8 shadow-[var(--shadow-pop)]">
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-border" />
-
+      <div className="animate-modal-pop relative z-10 max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-[28px] bg-background px-5 pt-5 pb-6 shadow-[var(--shadow-pop)]">
         <div className="mb-1 flex items-center justify-between">
           <h3 className="text-[17px] font-bold text-foreground">
             이번 주 목표

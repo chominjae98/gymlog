@@ -171,6 +171,10 @@ export type Database = {
         Args: { code: string };
         Returns: Room;
       };
+      leave_room: {
+        Args: { target_room_id: string };
+        Returns: undefined;
+      };
       get_global_leaderboard: {
         Args: { limit_count?: number };
         Returns: LeaderboardEntry[];

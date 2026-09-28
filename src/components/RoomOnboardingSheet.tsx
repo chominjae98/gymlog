@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, KeyRound, Plus, X } from "lucide-react";
+import { KeyRound, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createRoom, joinRoomByCode } from "@/lib/rooms-data";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
@@ -45,7 +45,8 @@ export function RoomOnboardingSheet({ initialCode, onClose }: Props) {
       showToast(`"${room.name}" 방을 만들었어요`);
       router.push(`/?room=${room.id}`);
       router.refresh();
-    } catch {
+    } catch (error) {
+      console.error("방 생성 실패:", error);
       setCreating(false);
       setCreateError("방 생성에 실패했어요. 다시 시도해 주세요.");
     }
@@ -64,22 +65,21 @@ export function RoomOnboardingSheet({ initialCode, onClose }: Props) {
       showToast(`"${room.name}" 방에 참가했어요`);
       router.push(`/?room=${room.id}`);
       router.refresh();
-    } catch {
+    } catch (error) {
+      console.error("방 참가 실패:", error);
       setJoining(false);
       setJoinError("코드를 찾을 수 없어요. 다시 확인해 주세요.");
     }
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
         onClick={onClose}
         className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
       />
-      <div className="animate-sheet-up safe-bottom relative z-10 max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] bg-background px-5 pt-4 pb-8 shadow-[var(--shadow-pop)]">
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-border" />
-
+      <div className="animate-modal-pop relative z-10 max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-[28px] bg-background px-5 pt-5 pb-6 shadow-[var(--shadow-pop)]">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-[17px] font-bold text-foreground">같이 인증할 친구들과 방을 만들어보세요</h3>
           <button
@@ -109,7 +109,6 @@ export function RoomOnboardingSheet({ initialCode, onClose }: Props) {
             className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand py-3 text-[14px] font-semibold text-white transition active:scale-[0.98] disabled:opacity-60"
           >
             {creating ? "만드는 중..." : "방 만들기"}
-            {!creating && <ArrowRight size={15} />}
           </button>
         </div>
 

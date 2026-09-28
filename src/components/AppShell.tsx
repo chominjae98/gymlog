@@ -95,6 +95,10 @@ export function AppShell(props: Props) {
             setShowRoomSwitcher(false);
             switchRoom(roomId);
           }}
+          onRoomLeft={() => {
+            setShowRoomSwitcher(false);
+            router.refresh();
+          }}
         />
       )}
     </div>

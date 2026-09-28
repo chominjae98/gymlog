@@ -180,11 +180,9 @@ export function Dashboard({
 
       <Header
         profile={profile}
-        room={room}
         myGoal={myGoal}
         onGoalClick={() => setShowGoal(true)}
         onHeatmapClick={() => setShowHeatmap(true)}
-        onRoomClick={onSwitchRoomClick}
       />
 
       <main className="relative mx-auto flex max-w-md flex-col gap-5 px-4 pt-6 sm:px-5">

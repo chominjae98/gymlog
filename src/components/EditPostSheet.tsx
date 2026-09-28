@@ -165,15 +165,13 @@ export function EditPostSheet({ log, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
       />
-      <div className="animate-sheet-up safe-bottom relative z-10 max-h-[88dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] bg-background px-6 pt-5 pb-10 shadow-[var(--shadow-pop)]">
-        <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-border" />
-
+      <div className="animate-modal-pop relative z-10 max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-[28px] bg-background px-6 pt-5 pb-6 shadow-[var(--shadow-pop)]">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h3 className="text-[18px] font-bold text-foreground">게시물 수정</h3>

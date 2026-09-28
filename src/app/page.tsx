@@ -36,9 +36,16 @@ export default async function Home({
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
   if (!user) {
+    // 세션 쿠키가 있는데도 로그인 화면으로 튕기는 문제를 진단하려면 "쿠키가 아예
+    // 없었는지"와 "쿠키는 있었는데 검증/갱신에 실패했는지"를 구분할 수 있어야 한다.
+    // (getMyRooms와 동일하게, 에러를 조용히 삼키지 않고 로그로 남긴다.)
+    if (userError) {
+      console.error("getUser 실패로 로그인 화면 표시:", userError.message, userError.status);
+    }
     return <LoginScreen authError={params?.auth_error === "1"} />;
   }
 

@@ -125,3 +125,19 @@ body {
 .animate-sheet-up {
   animation: sheet-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* 화면 중앙에 뜨는 모달(카드형 다이얼로그)용 등장 애니메이션.
+   바텀시트(sheet-up)와 달리 아래에서 올라오지 않고, 살짝 커지며 페이드인한다. */
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-modal-pop {
+  animation: modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

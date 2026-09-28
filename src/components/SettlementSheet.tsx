@@ -44,15 +44,14 @@ export function SettlementSheet({ monthDate, weeklyFine, roomId, onClose }: Prop
   const totalPot = sorted.reduce((sum, s) => sum + s.totalFine, 0);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
         onClick={onClose}
         className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
       />
-      <div className="animate-sheet-up safe-bottom relative z-10 flex max-h-[88dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[32px] bg-background shadow-[var(--shadow-pop)]">
-        <div className="shrink-0 px-5 pb-3 pt-4">
-          <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-border" />
+      <div className="animate-modal-pop relative z-10 flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-[28px] bg-background shadow-[var(--shadow-pop)]">
+        <div className="shrink-0 px-5 pb-3 pt-5">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-1.5 text-[17px] font-bold text-foreground">
               <Receipt size={17} className="text-brand-strong" />
