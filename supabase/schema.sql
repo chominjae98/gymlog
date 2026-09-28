@@ -651,3 +651,63 @@ alter table public.fine_exceptions alter column room_id set not null;
 -- ------------------------------------------------------------
 drop table if exists public.push_subscriptions;
 drop table if exists public.workout_log_reactions;
+
+-- ------------------------------------------------------------
+-- 12. 기본 방 자동 가입 : 신규 가입자(카카오 등)도 별도 방을 만들거나 초대 코드를
+--     받기 전까지는 홈 화면이 텅 비어 있었다. 섹션 10에서 기존 유저를 이관해 넣었던
+--     그 "기본 방"을 신규 가입자도 자동으로 함께 쓰도록 한다 — 친구끼리 따로 만드는
+--     "방"과는 별개로, 모든 사용자가 기본으로 속하는 공용 공간이 하나 있어야 한다.
+-- ------------------------------------------------------------
+alter table public.rooms add column if not exists is_default boolean not null default false;
+
+-- 아직 기본 방으로 표시된 방이 하나도 없다면(=이번이 처음 이 마이그레이션을 돈다면),
+-- 가장 먼저 만들어진 방을 기본 방으로 지정한다(섹션 10에서 만든 그 방).
+do $$
+begin
+  if not exists (select 1 from public.rooms where is_default) then
+    update public.rooms
+      set is_default = true
+      where id = (select id from public.rooms order by created_at asc limit 1);
+  end if;
+end $$;
+
+-- 기본 방이 생긴 뒤(섹션 10 이후) 가입했지만 아직 거기 속하지 않은 기존 유저를 백필한다.
+insert into public.room_members (room_id, user_id)
+select r.id, p.id
+from public.rooms r
+cross join public.profiles p
+where r.is_default
+on conflict (room_id, user_id) do nothing;
+
+-- 신규 유저 가입 시 profiles row 생성에 이어 기본 방 멤버십도 함께 만든다.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, nickname, avatar_url, toss_user_key, kakao_id)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data ->> 'full_name',
+      new.raw_user_meta_data ->> 'name',
+      '친구'
+    ),
+    new.raw_user_meta_data ->> 'avatar_url',
+    new.raw_user_meta_data ->> 'toss_user_key',
+    case
+      when new.raw_app_meta_data ->> 'provider' = 'kakao'
+        then new.raw_user_meta_data ->> 'provider_id'
+      else null
+    end
+  )
+  on conflict (id) do nothing;
+
+  insert into public.room_members (room_id, user_id)
+  select id, new.id from public.rooms where is_default
+  on conflict (room_id, user_id) do nothing;
+
+  return new;
+end;
+$$;
