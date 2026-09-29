@@ -72,7 +72,13 @@ export function JoinRoomSheet({ onClose, onJoined, initialCode }: Props) {
             placeholder="8자리 코드 입력"
             maxLength={8}
             autoFocus
-            className="w-full rounded-xl bg-surface-muted px-4 py-3 text-center text-[16px] font-bold tracking-[0.2em] text-foreground outline-none"
+            // 입력값이 없을 때 text-center를 그대로 두면, 빈 입력창의 커서가 가운데
+            // 정렬된 placeholder 텍스트 한가운데에 겹쳐서 찍혀 마치 깨진 것처럼 보인다.
+            // 값이 없을 땐 왼쪽 정렬로 커서를 자연스러운 시작 위치에 두고, 실제로
+            // 입력을 시작하면(코드 입력 느낌을 살리기 위해) 가운데 정렬로 바꾼다.
+            className={`w-full rounded-xl bg-surface-muted px-4 py-3 text-[16px] font-bold tracking-[0.2em] text-foreground outline-none ${
+              code ? "text-center" : "text-left"
+            }`}
           />
           {error && <p className="mt-2 text-center text-[12px] text-warn">{error}</p>}
           <button

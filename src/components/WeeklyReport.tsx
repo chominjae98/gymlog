@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronRight, Target, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Target } from "lucide-react";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import type { WeeklyProgress } from "@/types/database";
@@ -118,7 +118,11 @@ export function WeeklyReport({
   );
 }
 
-/** 주간 리포트 카드를 눌렀을 때 뜨는 상세 화면 — 카테고리별 상위 10명까지 보여준다. */
+/**
+ * 주간 리포트 카드를 눌렀을 때 보여주는 상세 화면 — 카테고리별 상위 10명까지 보여준다.
+ * 다른 시트들(가운데 뜨는 카드형 다이얼로그)과 달리, 목록이 길어질 수 있어 화면
+ * 전체를 채우는 "페이지"처럼 아래에서 올라와 전환되고, 뒤로가기 버튼으로 돌아간다.
+ */
 function WeeklyReportSheet({
   progress,
   currentUserId,
@@ -134,69 +138,63 @@ function WeeklyReportSheet({
   const goalAchievers = rankGoalAchievers(progress, DETAIL_LIMIT);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
-      <button
-        aria-label="닫기"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
-      />
-      <div className="animate-modal-pop relative z-10 flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-[28px] bg-background shadow-[var(--shadow-pop)]">
-        <div className="shrink-0 px-5 pb-3 pt-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[17px] font-bold text-foreground">주간 리포트</h3>
-            <button
-              onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-muted"
-            >
-              <X size={18} />
-            </button>
-          </div>
+    <div className="animate-sheet-up fixed inset-0 z-40 flex flex-col bg-background">
+      <div className="safe-top shrink-0 border-b border-border px-2 pb-3 pt-3">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onClose}
+            aria-label="뒤로가기"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition active:scale-90"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <h3 className="text-[17px] font-bold text-foreground">주간 리포트</h3>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
-          <div className="flex flex-col gap-5">
-            {mostWorkouts.length > 0 && (
-              <div>
-                <div className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-muted">
-                  <span className="text-[14px] leading-none">🔥</span>
-                  가장 많이 운동한 사람
-                </div>
-                <ul className="flex flex-col gap-3">
-                  {mostWorkouts.map((p, i) => (
-                    <ReportRow
-                      key={p.profile.id}
-                      rank={i + 1}
-                      nickname={p.profile.nickname}
-                      avatarUrl={p.profile.avatar_url}
-                      isMe={p.profile.id === currentUserId}
-                      stat={`${p.achievedDays}일`}
-                    />
-                  ))}
-                </ul>
+      <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-8 pt-4">
+        <div className="mx-auto flex max-w-md flex-col gap-5">
+          {mostWorkouts.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-muted">
+                <span className="text-[14px] leading-none">🔥</span>
+                가장 많이 운동한 사람
               </div>
-            )}
+              <ul className="flex flex-col gap-3">
+                {mostWorkouts.map((p, i) => (
+                  <ReportRow
+                    key={p.profile.id}
+                    rank={i + 1}
+                    nickname={p.profile.nickname}
+                    avatarUrl={p.profile.avatar_url}
+                    isMe={p.profile.id === currentUserId}
+                    stat={`${p.achievedDays}일`}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
 
-            {goalAchievers.length > 0 && (
-              <div>
-                <div className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-muted">
-                  <Target size={14} className="text-brand-strong" />
-                  목표 달성률 TOP
-                </div>
-                <ul className="flex flex-col gap-3">
-                  {goalAchievers.map((p, i) => (
-                    <ReportRow
-                      key={p.profile.id}
-                      rank={i + 1}
-                      nickname={p.profile.nickname}
-                      avatarUrl={p.profile.avatar_url}
-                      isMe={p.profile.id === currentUserId}
-                      stat={`${Math.round(p.rate * 100)}%`}
-                    />
-                  ))}
-                </ul>
+          {goalAchievers.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-muted">
+                <Target size={14} className="text-brand-strong" />
+                목표 달성률 TOP
               </div>
-            )}
-          </div>
+              <ul className="flex flex-col gap-3">
+                {goalAchievers.map((p, i) => (
+                  <ReportRow
+                    key={p.profile.id}
+                    rank={i + 1}
+                    nickname={p.profile.nickname}
+                    avatarUrl={p.profile.avatar_url}
+                    isMe={p.profile.id === currentUserId}
+                    stat={`${Math.round(p.rate * 100)}%`}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

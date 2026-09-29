@@ -93,7 +93,9 @@ export function RoomsTab({
                 <Image src={profile.avatar_url} alt="" fill sizes="40px" className="object-cover" />
               )}
             </div>
-            <p className="truncate text-[15px] font-bold leading-tight text-foreground">내 방</p>
+            <p className="truncate text-[15px] font-bold leading-tight text-foreground">
+              {profile.nickname}님
+            </p>
           </div>
           <HeaderMenu />
         </div>

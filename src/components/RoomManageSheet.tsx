@@ -133,30 +133,19 @@ export function RoomManageSheet({ room, userId, onClose, onLeft }: Props) {
                 {room.invite_code}
               </p>
             </div>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
-              <Share2 size={16} />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center text-brand-strong">
+              <Share2 size={18} />
             </span>
           </button>
 
           {isOwner && (
-            <div className="surface-card mt-3 flex flex-col gap-2 px-4 py-3.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-                  <Landmark size={14} className="text-muted" />
-                  정산 계좌
-                </p>
-                {!editingAccount && (
-                  <button
-                    onClick={() => setEditingAccount(true)}
-                    className="shrink-0 text-[12px] font-semibold text-brand-strong"
-                  >
-                    {hasSettlementAccount ? "수정" : "등록하기"}
-                  </button>
-                )}
-              </div>
-
+            <div className="surface-card mt-3 px-4 py-3.5">
               {editingAccount ? (
                 <div className="flex flex-col gap-2">
+                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+                    <Landmark size={14} className="text-muted" />
+                    정산 계좌
+                  </p>
                   <input
                     value={settlementBank}
                     onChange={(e) => setSettlementBank(e.target.value)}
@@ -202,13 +191,27 @@ export function RoomManageSheet({ room, userId, onClose, onLeft }: Props) {
                   </div>
                 </div>
               ) : (
-                <p className="text-[13px] text-muted">
-                  {hasSettlementAccount
-                    ? `${settlementBank} ${settlementAccountNo}${
-                        settlementAccountHolder ? ` (${settlementAccountHolder})` : ""
-                      }`
-                    : "등록하면 정산 요약에서 원클릭 송금 버튼이 생겨요"}
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+                      <Landmark size={14} className="text-muted" />
+                      정산 계좌
+                    </p>
+                    <p className="mt-1 text-[13px] text-muted">
+                      {hasSettlementAccount
+                        ? `${settlementBank} ${settlementAccountNo}${
+                            settlementAccountHolder ? ` (${settlementAccountHolder})` : ""
+                          }`
+                        : "등록하면 정산 요약에서 원클릭 송금 버튼이 생겨요"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setEditingAccount(true)}
+                    className="shrink-0 text-[12px] font-semibold text-brand-strong"
+                  >
+                    {hasSettlementAccount ? "수정" : "등록하기"}
+                  </button>
+                </div>
               )}
             </div>
           )}
