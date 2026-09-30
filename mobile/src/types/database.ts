@@ -87,6 +87,14 @@ export type LeaderboardEntry = {
   total_days: number;
 };
 
+export type MyLeaderboardRankRow = {
+  rank: number;
+  nickname: string;
+  avatar_url: string | null;
+  total_days: number;
+  total_participants: number;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -208,6 +216,10 @@ export type Database = {
       get_leaderboard: {
         Args: { period?: string; limit_count?: number };
         Returns: LeaderboardEntry[];
+      };
+      get_my_leaderboard_rank: {
+        Args: { period?: string; target_user_id?: string };
+        Returns: MyLeaderboardRankRow[];
       };
     };
     Enums: Record<string, never>;

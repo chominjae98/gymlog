@@ -978,3 +978,55 @@ begin
     alter publication supabase_realtime add table public.workout_logs;
   end if;
 end $$;
+
+-- ------------------------------------------------------------
+-- 21. 내 랭킹 순위 : get_leaderboard는 상위 100명까지만 보여주는데, 그 밖의
+--     순위인 사람은 자기가 몇 등인지 알 방법이 없었다. 같은 정렬 기준(인증
+--     일수 내림차순, 동점이면 먼저 가입한 사람 우선)으로 전체를 한 번 매기고
+--     그중 한 명(target_user_id)의 행만 돌려준다 — 등수뿐 아니라 이번 기간에
+--     기록이 아예 없는 경우(행 없음)와 전체 참여자 수도 함께 알 수 있다.
+-- ------------------------------------------------------------
+create or replace function public.get_my_leaderboard_rank(period text default 'all', target_user_id uuid default auth.uid())
+returns table (
+  rank bigint,
+  nickname text,
+  avatar_url text,
+  total_days bigint,
+  total_participants bigint
+)
+language sql
+security definer set search_path = public
+stable
+as $$
+  with ranked as (
+    select
+      p.id as user_id,
+      p.nickname,
+      p.avatar_url,
+      count(distinct wl.log_date) as total_days,
+      row_number() over (
+        order by count(distinct wl.log_date) desc, p.created_at asc
+      ) as rnk
+    from public.profiles p
+    join public.workout_logs wl on wl.user_id = p.id
+    join public.rooms r on r.id = wl.room_id and r.is_default
+    where
+      case period
+        when 'week' then wl.log_date >= date_trunc('week', (now() at time zone 'Asia/Seoul')::date)::date
+        when 'month' then wl.log_date >= date_trunc('month', (now() at time zone 'Asia/Seoul')::date)::date
+        else true
+      end
+    group by p.id, p.nickname, p.avatar_url, p.created_at
+    having count(distinct wl.log_date) > 0
+  )
+  select
+    ranked.rnk as rank,
+    ranked.nickname,
+    ranked.avatar_url,
+    ranked.total_days,
+    (select count(*) from ranked) as total_participants
+  from ranked
+  where ranked.user_id = target_user_id;
+$$;
+
+grant execute on function public.get_my_leaderboard_rank(text, uuid) to authenticated;

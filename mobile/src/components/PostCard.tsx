@@ -1,8 +1,8 @@
 import { Image } from "expo-image";
 import { EllipsisVertical, Pencil, Trash2 } from "lucide-react-native";
-import { useState } from "react";
-import { Dimensions, FlatList, Modal, Pressable, Text, View } from "react-native";
-import { PostSocialPanel } from "@/components/PostSocialPanel";
+import { useRef, useState } from "react";
+import { FlatList, Modal, Pressable, Text, View } from "react-native";
+import { PostSocialPanel, type PostSocialPanelHandle } from "@/components/PostSocialPanel";
 import { ReactionBar } from "@/components/ReactionBar";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatTime } from "@/lib/date";
@@ -23,6 +23,8 @@ type Props = {
  * 하루치 게시물을 보여주는 DayDrawer와, 최신순 전체 피드를 보여주는 HomeFeed가 공유한다.
  */
 export function PostCard({ log, currentUserId, reactionSummary, comments, busy, onEdit, onDelete }: Props) {
+  const socialPanelRef = useRef<PostSocialPanelHandle>(null);
+
   return (
     <View className="overflow-hidden rounded-[24px] bg-surface shadow-sm">
       <View className="flex-row items-center gap-2.5 px-4 py-3.5">
@@ -38,32 +40,45 @@ export function PostCard({ log, currentUserId, reactionSummary, comments, busy, 
 
       {log.memo && <Text className="px-4 pt-3.5 text-[13px] leading-relaxed text-foreground">{log.memo}</Text>}
 
-      <ReactionBar logId={log.id} currentUserId={currentUserId} initialSummary={reactionSummary} />
-      <PostSocialPanel logId={log.id} currentUserId={currentUserId} initialComments={comments ?? []} />
+      <ReactionBar
+        logId={log.id}
+        currentUserId={currentUserId}
+        initialSummary={reactionSummary}
+        onPressComment={() => socialPanelRef.current?.focusInput()}
+      />
+      <PostSocialPanel ref={socialPanelRef} logId={log.id} currentUserId={currentUserId} initialComments={comments ?? []} />
     </View>
   );
 }
 
-const screenWidth = Dimensions.get("window").width;
-
-/** 사진이 여러 장이면 옆으로 스와이프하며 볼 수 있는 캐러셀. 네이티브 FlatList paging으로 처리. */
+/**
+ * 사진이 여러 장이면 옆으로 스와이프하며 볼 수 있는 캐러셀. 네이티브 FlatList paging으로 처리.
+ * 폭은 화면 크기에서 카드 여백을 추측해서 빼는 대신(기기마다 어긋나 오른쪽에 빈 공간이
+ * 남는 원인이었다), onLayout으로 이 카드가 실제로 차지한 폭을 그대로 잰다.
+ */
 function PhotoCarousel({ photoUrls, nickname }: { photoUrls: string[]; nickname: string }) {
   const [index, setIndex] = useState(0);
-  const width = screenWidth - 32; // 카드 좌우 여백(px-4 * 2) 제외
+  const [width, setWidth] = useState(0);
 
   return (
-    <View style={{ width, aspectRatio: 4 / 5 }} className="bg-surface-muted">
-      <FlatList
-        data={photoUrls}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(url) => url}
-        onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
-        renderItem={({ item: url }) => (
-          <Image source={{ uri: url }} style={{ width, height: "100%" }} contentFit="cover" alt={`${nickname}의 운동 인증`} />
-        )}
-      />
+    <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{ aspectRatio: 4 / 5 }}
+      className="w-full bg-surface-muted"
+    >
+      {width > 0 && (
+        <FlatList
+          data={photoUrls}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(url) => url}
+          onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+          renderItem={({ item: url }) => (
+            <Image source={{ uri: url }} style={{ width, height: "100%" }} contentFit="cover" alt={`${nickname}의 운동 인증`} />
+          )}
+        />
+      )}
       {photoUrls.length > 1 && (
         <View className="pointer-events-none absolute inset-x-0 bottom-3 flex-row items-center justify-center gap-1.5">
           {photoUrls.map((_, i) => (

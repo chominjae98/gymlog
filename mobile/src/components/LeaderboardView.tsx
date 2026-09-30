@@ -3,7 +3,7 @@ import { Trophy } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Avatar } from "@/components/ui/Avatar";
-import { getLeaderboard, type LeaderboardPeriod } from "@/lib/rooms-data";
+import { getLeaderboard, getMyLeaderboardRank, type LeaderboardPeriod } from "@/lib/rooms-data";
 import { supabase } from "@/lib/supabase/client";
 
 const PODIUM_RANK_STYLE = [
@@ -26,10 +26,13 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
     queryKey: ["leaderboard", period],
     queryFn: () => getLeaderboard(supabase, period),
   });
+  const { data: myRank } = useQuery({
+    queryKey: ["myLeaderboardRank", period, currentUserId],
+    queryFn: () => getMyLeaderboardRank(supabase, currentUserId, period),
+  });
 
   const top3 = entries?.slice(0, 3) ?? [];
   const rest = entries?.slice(3) ?? [];
-  const myRank = entries ? entries.findIndex((e) => e.user_id === currentUserId) + 1 : 0;
 
   return (
     <View className="flex-1 bg-background">
@@ -49,6 +52,23 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
             </Pressable>
           ))}
         </View>
+
+        {myRank && (
+          <View className="mb-4 flex-row items-center gap-3 rounded-[24px] bg-brand-soft px-4 py-3.5">
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-brand">
+              <Text className="text-[13px] font-extrabold text-white">{myRank.rank}</Text>
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text className="text-[11.5px] font-semibold text-brand-strong">
+                내 순위 · {myRank.total_participants}명 중
+              </Text>
+              <Text className="text-[14px] font-bold text-foreground" numberOfLines={1}>
+                {myRank.nickname}
+              </Text>
+            </View>
+            <Text className="shrink-0 text-[15px] font-extrabold text-brand-strong">{myRank.total_days}일</Text>
+          </View>
+        )}
 
         {isError ? (
           <View className="h-40 items-center justify-center gap-1">
@@ -111,14 +131,6 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
                     </View>
                   );
                 })}
-              </View>
-            )}
-
-            {myRank > 3 && (
-              <View className="mt-4 items-center">
-                <View className="rounded-full bg-foreground px-4 py-2.5">
-                  <Text className="text-[12.5px] font-semibold text-background">내 순위 {myRank}위</Text>
-                </View>
               </View>
             )}
           </>

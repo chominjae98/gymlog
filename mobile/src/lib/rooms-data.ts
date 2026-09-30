@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, LeaderboardEntry, Profile, Room } from "@/types/database";
+import type { Database, LeaderboardEntry, MyLeaderboardRankRow, Profile, Room } from "@/types/database";
 
 type Client = SupabaseClient<Database>;
 
@@ -73,7 +73,7 @@ const LEADERBOARD_LIMIT = 100;
 
 export type LeaderboardPeriod = "week" | "month" | "all";
 
-/** 방과 무관한 전체 이용자 랭킹(기간별 인증 일수 기준). 상위 100명까지만 보여준다. */
+/** "홈"(기본) 방에서의 인증 일수 기준 전체 이용자 랭킹(기간별). 상위 100명까지만 보여준다. */
 export async function getLeaderboard(
   supabase: Client,
   period: LeaderboardPeriod
@@ -86,4 +86,24 @@ export async function getLeaderboard(
     console.error("getLeaderboard 조회 실패:", period, error);
   }
   return (data ?? []) as LeaderboardEntry[];
+}
+
+/**
+ * 내 순위. get_leaderboard가 상위 100명까지만 보여주는 것과 달리 전체 순위 기준으로
+ * 매겨서, 100등 밖이어도 몇 등인지 알 수 있다. 이번 기간에 기록이 하나도 없으면 null.
+ */
+export async function getMyLeaderboardRank(
+  supabase: Client,
+  userId: string,
+  period: LeaderboardPeriod
+): Promise<MyLeaderboardRankRow | null> {
+  const { data, error } = await supabase.rpc("get_my_leaderboard_rank", {
+    period,
+    target_user_id: userId,
+  });
+  if (error) {
+    console.error("getMyLeaderboardRank 조회 실패:", period, error);
+    return null;
+  }
+  return (data as MyLeaderboardRankRow[] | null)?.[0] ?? null;
 }
