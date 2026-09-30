@@ -43,7 +43,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
             <Pressable
               key={tab.key}
               onPress={() => setPeriod(tab.key)}
-              className={`flex-1 items-center rounded-full py-2 ${period === tab.key ? "bg-surface shadow-sm" : ""}`}
+              className={`flex-1 items-center rounded-full py-2 ${period === tab.key ? "bg-surface" : ""}`}
             >
               <Text className={`text-[12.5px] font-semibold ${period === tab.key ? "text-foreground" : "text-muted"}`}>{tab.label}</Text>
             </Pressable>
