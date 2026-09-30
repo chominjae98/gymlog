@@ -66,10 +66,10 @@ export function ReactionBar({
   return (
     <View className="px-4 pt-3">
       <View className="flex-row items-center gap-4">
-        <Pressable onPress={toggleLike} disabled={isOptimistic || pending} hitSlop={6} className="active:opacity-50 disabled:opacity-40">
+        <Pressable onPress={toggleLike} disabled={isOptimistic || pending} hitSlop={6}>
           <Heart size={25} color={liked ? "#ff3b30" : "#1b1d1a"} fill={liked ? "#ff3b30" : "none"} strokeWidth={1.8} />
         </Pressable>
-        <Pressable onPress={onPressComment} hitSlop={6} className="active:opacity-50">
+        <Pressable onPress={onPressComment} hitSlop={6}>
           <MessageCircle size={23} color="#1b1d1a" strokeWidth={1.8} />
         </Pressable>
       </View>

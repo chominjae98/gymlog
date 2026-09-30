@@ -477,6 +477,15 @@ create policy "user can delete own comment"
   to authenticated
   using (auth.uid() = user_id);
 
+-- update 정책이 빠져 있어서(select/insert/delete만 있었음) 댓글 수정 UI를
+-- 눌러도 RLS에 막혀 0행 업데이트로 조용히 실패하고 있었다 — 댓글 수정 버그의 원인.
+drop policy if exists "user can update own comment" on public.workout_log_comments;
+create policy "user can update own comment"
+  on public.workout_log_comments for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- ------------------------------------------------------------
 -- 8. fine_exceptions : 벌금 예외 사유서 (피치 못할 사정으로 못 갔을 때 제출)
 --    승인(approved)되면 그 주 목표 달성일수에 +1로 카운트되어 벌금 계산에서 빠진다.

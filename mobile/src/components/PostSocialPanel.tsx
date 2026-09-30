@@ -1,6 +1,6 @@
 import { Check, Pencil, Trash2, X } from "lucide-react-native";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { useToast } from "@/components/ToastProvider";
 import { addComment, deleteComment, updateComment } from "@/lib/social-data";
 import { supabase } from "@/lib/supabase/client";
@@ -57,14 +57,23 @@ export const PostSocialPanel = forwardRef<PostSocialPanelHandle, Props>(function
     setCommentText("");
   }
 
-  async function handleDeleteComment(commentId: string) {
-    const prevComments = comments;
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
-    const { error } = await deleteComment(supabase, commentId);
-    if (error) {
-      setComments(prevComments);
-      showToast("댓글 삭제에 실패했어요.", "error");
-    }
+  function handleDeleteComment(commentId: string) {
+    Alert.alert("댓글 삭제", "이 댓글을 삭제할까요?", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "삭제",
+        style: "destructive",
+        onPress: async () => {
+          const prevComments = comments;
+          setComments((prev) => prev.filter((c) => c.id !== commentId));
+          const { error } = await deleteComment(supabase, commentId);
+          if (error) {
+            setComments(prevComments);
+            showToast("댓글 삭제에 실패했어요.", "error");
+          }
+        },
+      },
+    ]);
   }
 
   function startEditComment(c: CommentWithProfile) {
@@ -113,11 +122,20 @@ export const PostSocialPanel = forwardRef<PostSocialPanelHandle, Props>(function
                   autoFocus
                   className="min-w-0 flex-1 border-b border-border pb-1 text-[12.5px] text-foreground"
                 />
-                <Pressable onPress={() => handleSaveEditComment(c.id)} disabled={savingEdit || !editText.trim()} hitSlop={8}>
-                  <Check size={15} color="#17914f" />
+                <Pressable
+                  onPress={() => handleSaveEditComment(c.id)}
+                  disabled={savingEdit || !editText.trim()}
+                  hitSlop={6}
+                  className="h-7 w-7 items-center justify-center active:opacity-60 disabled:opacity-40"
+                >
+                  <Check size={18} color="#17914f" />
                 </Pressable>
-                <Pressable onPress={() => setEditingId(null)} hitSlop={8}>
-                  <X size={15} color="#a8ab9f" />
+                <Pressable
+                  onPress={() => setEditingId(null)}
+                  hitSlop={6}
+                  className="h-7 w-7 items-center justify-center active:opacity-60"
+                >
+                  <X size={18} color="#a8ab9f" />
                 </Pressable>
               </View>
             ) : (
@@ -127,12 +145,20 @@ export const PostSocialPanel = forwardRef<PostSocialPanelHandle, Props>(function
                   <Text className="text-foreground/80">{c.body}</Text>
                 </Text>
                 {c.user_id === currentUserId && (
-                  <View className="shrink-0 flex-row items-center gap-3 pt-0.5">
-                    <Pressable onPress={() => startEditComment(c)} hitSlop={8}>
-                      <Pencil size={12} color="#c4c7bb" />
+                  <View className="shrink-0 flex-row items-center">
+                    <Pressable
+                      onPress={() => startEditComment(c)}
+                      hitSlop={6}
+                      className="h-7 w-7 items-center justify-center active:opacity-60"
+                    >
+                      <Pencil size={15} color="#a8ab9f" />
                     </Pressable>
-                    <Pressable onPress={() => handleDeleteComment(c.id)} hitSlop={8}>
-                      <Trash2 size={12} color="#c4c7bb" />
+                    <Pressable
+                      onPress={() => handleDeleteComment(c.id)}
+                      hitSlop={6}
+                      className="h-7 w-7 items-center justify-center active:opacity-60"
+                    >
+                      <Trash2 size={15} color="#a8ab9f" />
                     </Pressable>
                   </View>
                 )}
