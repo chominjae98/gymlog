@@ -9,6 +9,7 @@ import { resizeImagesForUpload } from "@/lib/image-resize";
 import { hashFiles } from "@/lib/photo-hash";
 import { getExistingPhotoHashes } from "@/lib/duplicate-check";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
+import { Portal } from "@/components/Portal";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
 import type { WorkoutLogWithProfile } from "@/types/database";
@@ -170,6 +171,7 @@ export function EditPostSheet({ log, roomId, onClose, onSaved }: Props) {
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -259,5 +261,6 @@ export function EditPostSheet({ log, roomId, onClose, onSaved }: Props) {
         </button>
       </div>
     </div>
+    </Portal>
   );
 }

@@ -6,6 +6,7 @@ import { Landmark, LogOut, Share2, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoomMembers, leaveRoom, type RoomMemberProfile } from "@/lib/rooms-data";
 import { getRoomAccentClasses } from "@/lib/room-colors";
+import { Portal } from "@/components/Portal";
 import { shareRoomInvite } from "@/lib/share";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -94,6 +95,7 @@ export function RoomManageSheet({ room, userId, onClose, onLeft }: Props) {
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -259,5 +261,6 @@ export function RoomManageSheet({ room, userId, onClose, onLeft }: Props) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

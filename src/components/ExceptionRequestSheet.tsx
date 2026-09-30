@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { submitFineException } from "@/lib/fine-exceptions";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -65,6 +66,7 @@ export function ExceptionRequestSheet({ userId, weekStart, roomId, onClose, onSu
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -111,5 +113,6 @@ export function ExceptionRequestSheet({ userId, weekStart, roomId, onClose, onSu
         </button>
       </div>
     </div>
+    </Portal>
   );
 }

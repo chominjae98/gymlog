@@ -962,3 +962,19 @@ drop index if exists public.fine_exceptions_user_week_room_active_key;
 create unique index fine_exceptions_user_week_room_active_key
   on public.fine_exceptions (user_id, week_start, room_id)
   where status in ('pending', 'approved');
+
+-- ------------------------------------------------------------
+-- 20. 네이티브 앱 홈 피드 실시간 반영 : 홈 탭이 인스타그램 피드 형태로 바뀌면서,
+--     누군가 새로 인증샷을 올리거나 지우면 다른 사람 화면에도 새로고침 없이 바로
+--     반영되도록 workout_logs 테이블을 Supabase Realtime(postgres_changes)에 태운다.
+--     이미 추가돼 있으면 에러 없이 건너뛴다(재실행 가능).
+-- ------------------------------------------------------------
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'workout_logs'
+  ) then
+    alter publication supabase_realtime add table public.workout_logs;
+  end if;
+end $$;

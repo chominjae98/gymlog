@@ -8,6 +8,7 @@ import { countUniquePeople } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/client";
 import { removeWorkoutPhotos } from "@/lib/storage-upload";
 import { getCommentsForLogs, getReactionsForLogs } from "@/lib/social-data";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
@@ -117,6 +118,7 @@ export function DayDrawer({
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -241,6 +243,7 @@ export function DayDrawer({
         />
       )}
     </div>
+    </Portal>
   );
 }
 

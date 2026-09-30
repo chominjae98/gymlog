@@ -11,6 +11,7 @@ import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { resizeImageForUpload } from "@/lib/image-resize";
 import { resizeAndHashFiles } from "@/lib/photo-hash";
 import { getExistingPhotoHashes } from "@/lib/duplicate-check";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -203,6 +204,7 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -326,5 +328,6 @@ export function UploadSheet({ userId, roomId, initialDateKey, onClose, onUploade
         </button>
       </div>
     </div>
+    </Portal>
   );
 }

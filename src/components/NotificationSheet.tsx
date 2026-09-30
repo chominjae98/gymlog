@@ -6,6 +6,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { formatTime } from "@/lib/date";
 import { getMyNotifications, markAllNotificationsRead } from "@/lib/notifications-data";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import type { NotificationWithActor } from "@/types/database";
@@ -40,6 +41,7 @@ export function NotificationSheet({ userId, onClose }: Props) {
   }, [userId]);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -109,5 +111,6 @@ export function NotificationSheet({ userId, onClose }: Props) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

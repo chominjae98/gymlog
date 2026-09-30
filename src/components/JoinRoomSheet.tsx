@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { joinRoomByCode } from "@/lib/rooms-data";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -45,6 +46,7 @@ export function JoinRoomSheet({ onClose, onJoined, initialCode }: Props) {
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -91,5 +93,6 @@ export function JoinRoomSheet({ onClose, onJoined, initialCode }: Props) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

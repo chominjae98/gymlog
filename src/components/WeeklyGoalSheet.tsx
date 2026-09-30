@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getWeekStartKey, nowInSeoul } from "@/lib/date";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -58,6 +59,7 @@ export function WeeklyGoalSheet({ userId, goalRoomId, currentGoal, onClose, onSa
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -121,5 +123,6 @@ export function WeeklyGoalSheet({ userId, goalRoomId, currentGoal, onClose, onSa
         </button>
       </div>
     </div>
+    </Portal>
   );
 }

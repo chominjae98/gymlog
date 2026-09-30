@@ -8,6 +8,7 @@ import { formatMonthTitle, nowInSeoul } from "@/lib/date";
 import { getMonthlySettlement } from "@/lib/settlement-data";
 import { shareSettlementRequest } from "@/lib/share";
 import { buildTossTransferLink } from "@/lib/toss-transfer";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { useToast } from "@/components/ToastProvider";
@@ -67,6 +68,7 @@ export function SettlementSheet({ monthDate, weeklyFine, room, userId, onClose }
   const totalPot = sorted.reduce((sum, s) => sum + s.totalFine, 0);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -176,5 +178,6 @@ export function SettlementSheet({ monthDate, weeklyFine, room, userId, onClose }
         )}
       </div>
     </div>
+    </Portal>
   );
 }

@@ -13,6 +13,7 @@ import {
   type HeatmapCell,
 } from "@/lib/heatmap-data";
 import { HeatmapView } from "@/components/HeatmapView";
+import { Portal } from "@/components/Portal";
 import { useCloseOnBackButton } from "@/lib/useCloseOnBackButton";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
@@ -58,6 +59,7 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
     : { weeks: [], monthLabels: [] };
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="닫기"
@@ -127,6 +129,7 @@ export function HeatmapSheet({ userId, onClose }: { userId: string; onClose: () 
         )}
       </div>
     </div>
+    </Portal>
   );
 }
 
