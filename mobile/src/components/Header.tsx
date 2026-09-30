@@ -12,16 +12,23 @@ export function Header({
   myGoal,
   onGoalClick,
   onHeatmapClick,
+  underNativeHeader = false,
 }: {
   profile: Profile;
   userId: string;
   myGoal?: number | null;
   onGoalClick?: () => void;
   onHeatmapClick: () => void;
+  /** 이 화면에 네이티브 Stack 헤더가 이미 떠 있는지(room/[roomId]) — 그렇다면 상단 안전
+   * 영역은 그 헤더가 이미 확보해줬으므로 insets.top을 또 더하면 빈 공간이 두 배가 된다. */
+  underNativeHeader?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="bg-background/80 px-4 pb-3" style={{ paddingTop: insets.top + 12 }}>
+    <View
+      className="bg-background/80 px-4 pb-3"
+      style={{ paddingTop: underNativeHeader ? 12 : insets.top + 12 }}
+    >
       <View className="flex-row items-center justify-between gap-2">
         <Pressable
           onPress={onHeatmapClick}

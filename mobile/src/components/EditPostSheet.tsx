@@ -5,9 +5,10 @@ import { forwardRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useToast } from "@/components/ToastProvider";
 import { CenteredModal, type CenteredModalHandle } from "@/components/ui/CenteredModal";
+import { usePhotoSourcePicker } from "@/components/ui/PhotoSourceSheet";
 import { getExistingPhotoHashes } from "@/lib/duplicate-check";
 import type { ResizedPhoto } from "@/lib/image-resize";
-import { pickPhotos, processPickedAssets } from "@/lib/photo-picker";
+import { processPickedAssets } from "@/lib/photo-picker";
 import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
 import { supabase } from "@/lib/supabase/client";
 import type { WorkoutLogWithProfile } from "@/types/database";
@@ -32,6 +33,7 @@ export const EditPostSheet = forwardRef<CenteredModalHandle, Props>(function Edi
   const [memo, setMemo] = useState(log.memo ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const photoPicker = usePhotoSourcePicker();
 
   const totalCount = keptPhotos.length + newPhotos.length;
 
@@ -43,7 +45,7 @@ export const EditPostSheet = forwardRef<CenteredModalHandle, Props>(function Edi
   async function handlePickPhotos() {
     const remaining = MAX_PHOTOS - totalCount;
     if (remaining <= 0) return;
-    const assets = await pickPhotos(remaining);
+    const assets = await photoPicker.pick(remaining);
     if (assets.length === 0) return;
 
     const seen = new Set([...(existingHashes ?? []), ...keptPhotos.map((p) => p.hash), ...newPhotos.map((p) => p.hash)]);
@@ -103,6 +105,7 @@ export const EditPostSheet = forwardRef<CenteredModalHandle, Props>(function Edi
   }
 
   return (
+    <>
     <CenteredModal ref={ref} keyboardHandling onDismiss={onDismiss}>
       <ScrollView contentContainerClassName="px-6 pb-8 pt-2" keyboardShouldPersistTaps="handled">
         <View className="mb-6">
@@ -177,5 +180,7 @@ export const EditPostSheet = forwardRef<CenteredModalHandle, Props>(function Edi
         </Pressable>
       </ScrollView>
     </CenteredModal>
+    {photoPicker.element}
+    </>
   );
 });

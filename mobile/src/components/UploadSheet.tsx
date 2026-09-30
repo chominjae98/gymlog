@@ -6,12 +6,13 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { useToast } from "@/components/ToastProvider";
 import { CenteredModal, type CenteredModalHandle } from "@/components/ui/CenteredModal";
+import { usePhotoSourcePicker } from "@/components/ui/PhotoSourceSheet";
 import { groupLogsByDate } from "@/lib/dashboard-data";
 import { formatDayTitle, nowInSeoul, toDateKey } from "@/lib/date";
 import { getExistingPhotoHashes } from "@/lib/duplicate-check";
 import type { ResizedPhoto } from "@/lib/image-resize";
 import { fetchMonthLogs } from "@/lib/client-data";
-import { pickPhotos, processPickedAssets } from "@/lib/photo-picker";
+import { processPickedAssets } from "@/lib/photo-picker";
 import { supabase } from "@/lib/supabase/client";
 import { removeWorkoutPhotos, uploadWorkoutPhotos } from "@/lib/storage-upload";
 
@@ -36,6 +37,7 @@ export const UploadSheet = forwardRef<CenteredModalHandle, Props>(function Uploa
   const [selectedDate, setSelectedDate] = useState(new Date(`${initialDateKey}T00:00:00`));
   const [calendarMonth, setCalendarMonth] = useState(selectedDate);
   const [showCalendar, setShowCalendar] = useState(false);
+  const photoPicker = usePhotoSourcePicker();
 
   // 시트가 새 날짜로 다시 열릴 때마다 폼을 초기화한다.
   useEffect(() => {
@@ -66,7 +68,7 @@ export const UploadSheet = forwardRef<CenteredModalHandle, Props>(function Uploa
   async function handlePickPhotos() {
     const remaining = MAX_PHOTOS - photos.length;
     if (remaining <= 0) return;
-    const assets = await pickPhotos(remaining);
+    const assets = await photoPicker.pick(remaining);
     if (assets.length === 0) return;
 
     const seen = new Set([...(existingHashes ?? []), ...photos.map((p) => p.hash)]);
@@ -127,6 +129,7 @@ export const UploadSheet = forwardRef<CenteredModalHandle, Props>(function Uploa
   }
 
   return (
+    <>
     <CenteredModal ref={ref} keyboardHandling>
       <ScrollView contentContainerClassName="px-6 pb-8 pt-2" keyboardShouldPersistTaps="handled">
         <View className="mb-4 flex-row items-center justify-between">
@@ -226,5 +229,7 @@ export const UploadSheet = forwardRef<CenteredModalHandle, Props>(function Uploa
         </Pressable>
       </ScrollView>
     </CenteredModal>
+    {photoPicker.element}
+    </>
   );
 });

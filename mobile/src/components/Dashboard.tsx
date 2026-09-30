@@ -110,6 +110,7 @@ export function Dashboard({ userId, profile, room, goalRoomId }: Props) {
         myGoal={goalRoomId ? dashboard.myGoal : undefined}
         onGoalClick={goalRoomId ? () => goalSheetRef.current?.present() : undefined}
         onHeatmapClick={() => heatmapSheetRef.current?.present()}
+        underNativeHeader
       />
 
       <ScrollView
